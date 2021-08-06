@@ -30,7 +30,7 @@ contract DonationContract is Context, Ownable {
         return block.timestamp / 86400;
     }
 
-    function distribute(address ddtoken) public returns (bool) {
+    function distribute(address ddtoken) public onlyOwner returns (bool) {
         uint256 yesterday = today - 86400;
         uint256 total = totalDonation[yesterday];
 
@@ -44,7 +44,6 @@ contract DonationContract is Context, Ownable {
             uint256 share = minted / total * donations[yesterday][donators[yesterday][i]];
             IERC20(ddtoken).approve(donators[yesterday][i], share);
         }
-        totalDonation[yesterday] = total;
 
         return true;
     }
