@@ -24,7 +24,7 @@ contract DDToken is ERC20F, Ownable {
         dfm = _dfm;
         rwd = _rwd;
         don = _don;
-        _mint(lge, _lgeSupply);
+        _mint(_lge, _lgeSupply);
         _mint(owner(), _teamSupply);
     }
 
@@ -43,7 +43,7 @@ contract DDToken is ERC20F, Ownable {
     function mint(uint256 amount) public onlyOwner returns (bool) {
         uint256 fee;
         (,fee) = _calculateFee(amount);
-        _mint(don, supply);
+        _mint(don, amount);
         unchecked {
             _balances[don] -= fee;
         }
@@ -65,7 +65,9 @@ contract DDToken is ERC20F, Ownable {
         address recipient,
         uint256 amount
     ) public override returns (bool) {
-        transfer(sender, recipient, amount);
+
+        uint256 fee = _transfer(sender, recipient, amount);
+        _storeFee(fee);
 
         uint256 currentAllowance = allowance(sender, _msgSender());
         require(

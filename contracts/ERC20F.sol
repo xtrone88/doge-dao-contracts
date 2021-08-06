@@ -20,7 +20,7 @@ contract ERC20F is Context, IERC20, IERC20Metadata {
     constructor(
         string memory name_,
         string memory symbol_,
-        uint256 memory fee_
+        uint256 fee_
     ) {
         _name = name_;
         _symbol = symbol_;
@@ -35,7 +35,7 @@ contract ERC20F is Context, IERC20, IERC20Metadata {
         return _symbol;
     }
 
-    function decimals() public view override returns (uint8) {
+    function decimals() public view virtual override returns (uint8) {
         return 18;
     }
 
@@ -53,7 +53,7 @@ contract ERC20F is Context, IERC20, IERC20Metadata {
         override
         returns (bool)
     {
-        _transfer(sender, recipient, amount);
+        _transfer(_msgSender(), recipient, amount);
         return true;
     }
 

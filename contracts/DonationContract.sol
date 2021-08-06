@@ -1,3 +1,5 @@
+//"SPDX-License-Identifier: MIT"
+
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/utils/Context.sol";
@@ -15,7 +17,7 @@ contract DonationContract is Context, Ownable {
 
     uint256 private totalDonation;
     mapping(address => uint256) private donations;
-    address[] private donators = new address[]();
+    address[] private donators;
 
     uint256 private today;
     bool private paused = false;
@@ -25,7 +27,7 @@ contract DonationContract is Context, Ownable {
         today = _today();
     }
 
-    function _today() private pure returns (uint256) {
+    function _today() private view returns (uint256) {
         return block.timestamp / 86400;
     }
 
@@ -58,7 +60,7 @@ contract DonationContract is Context, Ownable {
         return true;
     }
 
-    function _priceOf(address token, uint256 amount) private returns (uint256) {
+    function _priceOf(address token, uint256 amount) private view returns (uint256) {
         uint price = uniswapAnchorView.price(IERC20Metadata(token).symbol());
         return price * amount;
     }
