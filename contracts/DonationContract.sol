@@ -12,12 +12,11 @@ import "./interfaces/IUniswapAnchorView.sol";
 contract DonationContract is Context, Ownable {
     address private immutable dfm;
 
-    uint256 private totalDonation;
-    mapping(address => uint256) private donations;
-    address[] private donators;
+    mapping(uint256 => uint256) private totalDonation;
+    mapping(uint256 => mapping(address => uint256)) private donations;
+    mapping(uint256 => address[]) private donators;
 
     uint256 private today;
-    bool private paused;
 
     IUniswapAnchorView private immutable uniswapAnchorView =
         IUniswapAnchorView(0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21);
@@ -31,31 +30,17 @@ contract DonationContract is Context, Ownable {
         return block.timestamp / 86400;
     }
 
-    function resume() public onlyOwner {
-        paused = false;
-        emit Resume(today);
-    }
-
-    function pause() public onlyOwner {
-        paused = true;
-        emit Paused(today);
-    }
-
     function distribute(address ddtoken) public returns (bool) {
-        require(paused, "DFM-Don: donating isn't paused");
-        require(totalDonation > 0, "DFM-Don: no doantions");
+        uint256 yesterday = today - 86400;
+        require(totalDonation[yesterday] > 0, "DFM-Don: no doantions");
 
         uint256 minted = IERC20(ddtoken).balanceOf(address(this));
         require(minted > 0, "DFM-Don: not minted for daily distribution");
 
-        for (uint256 i = 0; i < donators.length; i++) {
-            uint256 share = (minted / totalDonation) * donations[donators[i]];
-            IERC20(ddtoken).approve(donators[i], share);
-            donations[donators[i]] = 0;
+        for (uint256 i = 0; i < donators[yesterday].length; i++) {
+            uint256 share = minted / totalDonation[yesterday] * donations[yesterday][donators[yesterday][i]];
+            IERC20(ddtoken).approve(donators[yesterday][i], share);
         }
-
-        totalDonation = 0;
-        delete donators;
 
         return true;
     }
@@ -70,25 +55,19 @@ contract DonationContract is Context, Ownable {
     }
 
     function donate(address token, uint256 amount) public returns (bool) {
-        uint256 date = _today();
-        if (today != date) {
-            today = date;
-            paused = true;
-            emit Paused(today);
-        }
-
-        require(!paused, "DFM-Don: paused temporarily");
         require(amount > 0, "DFM-Don: can't donate with zero");
 
         address sender = _msgSender();
+        today = _today();
+        
         IERC20(token).transferFrom(sender, address(this), amount);
         IERC20(token).approve(dfm, amount);
         IDFMContract(dfm).donate(token, amount);
 
         uint256 price = _priceOf(token, amount);
-        donations[sender] += price;
-        totalDonation += price;
-        donators.push(sender);
+        donations[today][sender] += price;
+        totalDonation[today] += price;
+        donators[today].push(sender);
 
         return true;
     }
@@ -97,7 +76,4 @@ contract DonationContract is Context, Ownable {
         IERC20(ddtoken).transferFrom(address(this), _msgSender(), amount);
         return true;
     }
-
-    event Resume(uint256 today);
-    event Paused(uint256 today);
 }

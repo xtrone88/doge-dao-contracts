@@ -6,30 +6,38 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract DFMContract is Context, Ownable {
-
     uint256 private fund;
 
-    constructor() {
+    address[] tokens;
+    mapping(address => uint256) donations;
 
-    }
-    
+    constructor() {}
+
     receive() external payable {
         fund += msg.value;
     }
 
-    fallback() external payable {
+    fallback() external payable {}
 
-    }
-
-    function donate(address token, uint256 amount) public returns (bool) {
+    function donate(address token, uint256 amount) external returns (bool) {
         require(amount > 0, "DFM-Dfm: can't donate with zero");
 
         IERC20(token).transferFrom(_msgSender(), address(this), amount);
 
+        if (donations[token] == 0) {
+            tokens.push(token);
+        }
+        donations[token] += amount;
+
         return true;
     }
 
-    function swap(address tokenA, uint256 amountA, address tokenB) public returns (bool) {
-        
+    function swap(
+        address tokenA,
+        uint256 amountA,
+        address tokenB
+    ) public returns (uint256 amountB) {
+
+        return 0;
     }
 }

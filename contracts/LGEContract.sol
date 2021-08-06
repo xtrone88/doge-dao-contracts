@@ -92,6 +92,11 @@ contract LGEContract is Context, Ownable {
         emit Contributed(sender, amount);
     }
 
+    function reward() public payable {
+        require(block.timestamp > lockLpUntil, "DFM-Lge: locked for 6 months");
+
+    }
+
     event Contributed(address indexed from, uint256 amount);
     event Concluded(uint256 time, uint256 endtime);
 }
