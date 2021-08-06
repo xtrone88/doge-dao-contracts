@@ -1,5 +1,4 @@
 //"SPDX-License-Identifier: MIT"
-
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/utils/Context.sol";
@@ -11,8 +10,6 @@ import "./interfaces/IDFMContract.sol";
 import "./interfaces/IUniswapAnchorView.sol";
 
 contract DonationContract is Context, Ownable {
-
-    IUniswapAnchorView private immutable uniswapAnchorView = IUniswapAnchorView(0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21);
     address private immutable dfm;
 
     uint256 private totalDonation;
@@ -20,8 +17,11 @@ contract DonationContract is Context, Ownable {
     address[] private donators;
 
     uint256 private today;
-    bool private paused = false;
-            
+    bool private paused;
+
+    IUniswapAnchorView private immutable uniswapAnchorView =
+        IUniswapAnchorView(0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21);
+
     constructor(address _dfm) {
         dfm = _dfm;
         today = _today();
@@ -47,9 +47,9 @@ contract DonationContract is Context, Ownable {
 
         uint256 minted = IERC20(ddtoken).balanceOf(address(this));
         require(minted > 0, "DFM-Don: not minted for daily distribution");
-        
-        for (uint i = 0; i < donators.length; i++) {
-            uint256 share = minted / totalDonation * donations[donators[i]];
+
+        for (uint256 i = 0; i < donators.length; i++) {
+            uint256 share = (minted / totalDonation) * donations[donators[i]];
             IERC20(ddtoken).approve(donators[i], share);
             donations[donators[i]] = 0;
         }
@@ -60,8 +60,12 @@ contract DonationContract is Context, Ownable {
         return true;
     }
 
-    function _priceOf(address token, uint256 amount) private view returns (uint256) {
-        uint price = uniswapAnchorView.price(IERC20Metadata(token).symbol());
+    function _priceOf(address token, uint256 amount)
+        private
+        view
+        returns (uint256)
+    {
+        uint256 price = uniswapAnchorView.price(IERC20Metadata(token).symbol());
         return price * amount;
     }
 
@@ -80,7 +84,7 @@ contract DonationContract is Context, Ownable {
         IERC20(token).transferFrom(sender, address(this), amount);
         IERC20(token).approve(dfm, amount);
         IDFMContract(dfm).donate(token, amount);
-        
+
         uint256 price = _priceOf(token, amount);
         donations[sender] += price;
         totalDonation += price;
@@ -89,7 +93,7 @@ contract DonationContract is Context, Ownable {
         return true;
     }
 
-    function claim(address ddtoken, uint256 amount) public returns(bool) {
+    function claim(address ddtoken, uint256 amount) public returns (bool) {
         IERC20(ddtoken).transferFrom(address(this), _msgSender(), amount);
         return true;
     }

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -122,7 +121,7 @@ contract ERC20F is Context, IERC20, IERC20Metadata {
         return true;
     }
 
-    function _calculateFee(uint256 amount) internal returns (uint256, uint256) {
+    function _calculateFee(uint256 amount) internal view returns (uint256, uint256) {
         require(amount < 10000, "DDToken: transfer amount is too small");
 
         uint256 receiveal = amount;

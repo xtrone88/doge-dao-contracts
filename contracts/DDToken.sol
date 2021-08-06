@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.4;
 
 import "./ERC20F.sol";
@@ -28,7 +27,7 @@ contract DDToken is ERC20F, Ownable {
         _mint(owner(), _teamSupply);
     }
 
-    function decimals() public view override returns (uint8) {
+    function decimals() public pure override returns (uint8) {
         return 8;
     }
 
@@ -42,12 +41,13 @@ contract DDToken is ERC20F, Ownable {
 
     function mint(uint256 amount) public onlyOwner returns (bool) {
         uint256 fee;
-        (,fee) = _calculateFee(amount);
+        (, fee) = _calculateFee(amount);
         _mint(don, amount);
         unchecked {
             _balances[don] -= fee;
         }
         _storeFee(fee);
+        return true;
     }
 
     function transfer(address recipient, uint256 amount)
@@ -65,7 +65,6 @@ contract DDToken is ERC20F, Ownable {
         address recipient,
         uint256 amount
     ) public override returns (bool) {
-
         uint256 fee = _transfer(sender, recipient, amount);
         _storeFee(fee);
 
