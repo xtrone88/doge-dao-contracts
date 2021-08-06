@@ -3,11 +3,14 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "./interfaces/IDFMContract.sol";
+import "./interfaces/IUniswapAnchorView.sol";
 
 contract DonationContract is Context, Ownable {
 
+    IUniswapAnchorView private immutable uniswapAnchorView = IUniswapAnchorView(0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21);
     address private immutable dfm;
 
     uint256 private totalDonation;
@@ -28,6 +31,7 @@ contract DonationContract is Context, Ownable {
 
     function resume() public onlyOwner {
         paused = false;
+        emit Resume(today);
     }
 
     function pause() public onlyOwner {
@@ -47,15 +51,16 @@ contract DonationContract is Context, Ownable {
             IERC20(ddtoken).approve(donators[i], share);
             donations[donators[i]] = 0;
         }
+
         totalDonation = 0;
         delete donators;
 
         return true;
     }
 
-    // estmiate the price($) of token
     function _priceOf(address token, uint256 amount) private returns (uint256) {
-        return 1000 * amount;
+        uint price = uniswapAnchorView.price(IERC20Metadata(token).symbol());
+        return price * amount;
     }
 
     function donate(address token, uint256 amount) public returns (bool) {
@@ -87,5 +92,6 @@ contract DonationContract is Context, Ownable {
         return true;
     }
 
+    event Resume(uint256 today);
     event Paused(uint256 today);
 }

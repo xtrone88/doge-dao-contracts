@@ -29,7 +29,7 @@ contract DDToken is ERC20F, Ownable {
     }
 
     function decimals() public view override returns (uint8) {
-        return 4;
+        return 8;
     }
 
     function _storeFee(uint256 fee) private {
