@@ -32,15 +32,19 @@ contract DonationContract is Context, Ownable {
 
     function distribute(address ddtoken) public returns (bool) {
         uint256 yesterday = today - 86400;
-        require(totalDonation[yesterday] > 0, "DFM-Don: no doantions");
+        uint256 total = totalDonation[yesterday];
+
+        require(total > 0, "DFM-Don: no doantions");
+        totalDonation[yesterday] = 0;
 
         uint256 minted = IERC20(ddtoken).balanceOf(address(this));
         require(minted > 0, "DFM-Don: not minted for daily distribution");
 
         for (uint256 i = 0; i < donators[yesterday].length; i++) {
-            uint256 share = minted / totalDonation[yesterday] * donations[yesterday][donators[yesterday][i]];
+            uint256 share = minted / total * donations[yesterday][donators[yesterday][i]];
             IERC20(ddtoken).approve(donators[yesterday][i], share);
         }
+        totalDonation[yesterday] = total;
 
         return true;
     }
