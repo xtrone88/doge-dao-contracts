@@ -5,4 +5,5 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IWeightedPool {
     function getPoolId() external view returns (bytes32);
+    function setSwapFeePercentage(uint256 swapFeePercentage) external;
 }

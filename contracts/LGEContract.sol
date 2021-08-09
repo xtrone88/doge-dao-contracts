@@ -31,7 +31,8 @@ contract LGEContract is BaseContract {
     IWeightedPoolFactory internal immutable weightedPoolFactory =
         IWeightedPoolFactory(0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9);
 
-    bool private concluded;
+    bool private lgeClosed;
+    bool internal dfmOpened;
 
     uint256 private totalContirbution;
     mapping(address => uint256) private contirbutions;
@@ -41,10 +42,10 @@ contract LGEContract is BaseContract {
     
     uint256 private lockLpUntil;
     uint256 private uniLiquidity;
-    
-    address private balancerPool;
     uint256 private balLiquidity;
 
+    address internal balancerPool;
+    
     function totalContirbuted() public view returns (uint256) {
         return totalContirbution;
     }
@@ -53,12 +54,12 @@ contract LGEContract is BaseContract {
         return contirbutions[account];
     }
 
-    modifier opened() {
-        require(!concluded, "DFM-Lge: has already concluded");
+    modifier whenLgeAlive() {
+        require(!lgeClosed, "DFM-Lge: has already closed");
         _;
     }
 
-    modifier unlocked() {
+    modifier whenLpUnlocked() {
         require(block.timestamp > lockLpUntil, "DFM-Lge: locked for 6 months");
         _;
     }
@@ -67,7 +68,7 @@ contract LGEContract is BaseContract {
         public
         payable
         onlyOwner
-        opened
+        whenLgeAlive
         returns (bool)
     {
         require(
@@ -75,7 +76,7 @@ contract LGEContract is BaseContract {
             "DFM-Lge: can't conclude with zero balance"
         );
 
-        concluded = true;
+        lgeClosed = true;
 
         // send balance to DFM contract
         uint256 total = address(this).balance;
@@ -88,12 +89,14 @@ contract LGEContract is BaseContract {
 
         lockLpUntil = block.timestamp + 180 * 1 days;
 
-        emit Concluded(block.timestamp);
+        emit LgeClosed(block.timestamp);
+
+        dfmOpened = true;
 
         return true;
     }
 
-    function contribute() public payable opened {
+    function contribute() public payable whenLgeAlive {
         require(msg.value > 0, "DFM-Lge: can't contribute zero ether");
 
         address sender = _msgSender();
@@ -119,7 +122,7 @@ contract LGEContract is BaseContract {
         }
     }
 
-    function pullUniLiquidity(uint256 amount) public unlocked returns (bool) {
+    function pullUniLiquidity(uint256 amount) public whenLpUnlocked returns (bool) {
         address sender = _msgSender();
         require(uniLiuqidityOf(sender) > amount, "DFM-Lge: exceeded uniswap liquidity you contributed");
 
@@ -129,7 +132,7 @@ contract LGEContract is BaseContract {
         return true;
     }
 
-    function pullBalLiquidity(uint256 amount) public unlocked returns (bool) {
+    function pullBalLiquidity(uint256 amount) public whenLpUnlocked returns (bool) {
         address sender = _msgSender();
         require(balLiquidityOf(sender) > amount, "DFM-Lge: exceeded balancer liquidity you contributed");
 
@@ -249,5 +252,5 @@ contract LGEContract is BaseContract {
     }
 
     event Contributed(address indexed from, uint256 amount);
-    event Concluded(uint256 time);
+    event LgeClosed(uint256 time);
 }

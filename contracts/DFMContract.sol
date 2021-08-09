@@ -8,6 +8,11 @@ import "./LGEContract.sol";
 contract DFMContract is LGEContract {
     mapping(address => uint256) donations;
 
+    modifier whenDfmAlive() {
+        require(dfmOpened, "DFM-Dfm: has not yet opened");
+        _;
+    }
+
     modifier acceptable(address token) {
         require(
             token == WETH || token == DAI || token == WBTC || token == USDC,
@@ -18,6 +23,7 @@ contract DFMContract is LGEContract {
 
     function donate(address token, uint256 amount)
         external
+        whenDfmAlive
         acceptable(token)
         returns (bool)
     {
@@ -27,5 +33,9 @@ contract DFMContract is LGEContract {
         donations[token] += amount;
 
         return true;
+    }
+
+    function setBalancerSwapFee(uint256 swapFeePercentage) public onlyOwner whenDfmAlive {
+        IWeightedPool(balancerPool).setSwapFeePercentage(swapFeePercentage);
     }
 }
