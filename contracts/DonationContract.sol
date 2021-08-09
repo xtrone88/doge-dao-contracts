@@ -1,12 +1,11 @@
 //"SPDX-License-Identifier: MIT"
 pragma solidity ^0.8.4;
 
-import "./interfaces/IDFMContract.sol";
-
 import "./BaseContract.sol";
+import "./DFMContract.sol";
 
 contract DonationContract is BaseContract {
-    address private immutable dfm;
+    address payable private immutable dfm;
 
     mapping(uint256 => uint256) private totalDonation;
     mapping(uint256 => mapping(address => uint256)) private donations;
@@ -14,7 +13,7 @@ contract DonationContract is BaseContract {
 
     uint256 private today;
 
-    constructor(address _dfm) {
+    constructor(address payable _dfm) {
         dfm = _dfm;
         today = _today();
     }
@@ -34,7 +33,8 @@ contract DonationContract is BaseContract {
         require(minted > 0, "DFM-Don: not minted for daily distribution");
 
         for (uint256 i = 0; i < donators[yesterday].length; i++) {
-            uint256 share = minted / total * donations[yesterday][donators[yesterday][i]];
+            uint256 share = (minted / total) *
+                donations[yesterday][donators[yesterday][i]];
             IERC20(ddtoken).approve(donators[yesterday][i], share);
         }
 
@@ -46,10 +46,10 @@ contract DonationContract is BaseContract {
 
         address sender = _msgSender();
         today = _today();
-        
+
         IERC20(token).transferFrom(sender, address(this), amount);
         IERC20(token).approve(dfm, amount);
-        IDFMContract(dfm).donate(token, amount);
+        DFMContract(dfm).donate(token, amount);
 
         uint256 price = _priceOf(token) * amount;
         donations[today][sender] += price;
