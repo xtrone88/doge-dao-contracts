@@ -34,17 +34,18 @@ contract LGEContract is BaseContract {
     bool private lgeClosed;
     bool internal dfmOpened;
 
-    uint256 private totalContirbution;
-    mapping(address => uint256) private contirbutions;
+    uint256 internal totalContirbution;
+    mapping(address => uint256) internal contirbutions;
 
-    mapping(address => uint256) private pulledUniLps;
-    mapping(address => uint256) private pulledBalLps;
-    
     uint256 private lockLpUntil;
-    uint256 private uniLiquidity;
-    uint256 private balLiquidity;
 
+    uint256 internal uniLiquidityFund;
+    uint256 internal uniLiquidity;
+    uint256 internal balLiquidityFund;
+    uint256 internal balLiquidity;
     address internal balancerPool;
+
+    uint256 internal dfmStartTime;
     
     function totalContirbuted() public view returns (uint256) {
         return totalContirbution;
@@ -80,18 +81,21 @@ contract LGEContract is BaseContract {
 
         // send balance to DFM contract
         uint256 total = address(this).balance;
-        uint256 dfmShare = (total * 8) / 100;
+        balLiquidityFund = (total * 8) / 100;
+        uniLiquidityFund = total - balLiquidityFund;
 
-        // provide liquidity to Uniswap
-        _setupUniswapLiquidity(total - dfmShare, token);
+        // provide liquidity to Uniswap with dd token
+        _setupUniswapLiquidity(uniLiquidityFund, token);
+
         // provide weighted pool to Balancer V2
-        _setupBalancerPool(dfmShare);
+        _setupBalancerPool(balLiquidityFund);
 
         lockLpUntil = block.timestamp + 180 * 1 days;
 
         emit LgeClosed(block.timestamp);
 
         dfmOpened = true;
+        dfmStartTime = block.timestamp;
 
         return true;
     }
@@ -106,40 +110,6 @@ contract LGEContract is BaseContract {
         contirbutions[sender] += amount;
 
         emit Contributed(sender, amount);
-    }
-
-    function uniLiuqidityOf(address account) public view returns (uint256 balance) {
-        uint256 share = uniLiquidity * contributionOf(account) / totalContirbution;
-        unchecked {
-            balance = share - pulledUniLps[account];   
-        }
-    }
-
-    function balLiquidityOf(address account) public view returns (uint256 balance) {
-        uint256 share = balLiquidity * contributionOf(account) / totalContirbution;
-        unchecked {
-            balance = share - pulledBalLps[account];   
-        }
-    }
-
-    function pullUniLiquidity(uint256 amount) public whenLpUnlocked returns (bool) {
-        address sender = _msgSender();
-        require(uniLiuqidityOf(sender) > amount, "DFM-Lge: exceeded uniswap liquidity you contributed");
-
-        pulledUniLps[sender] += amount;
-        IERC20(UNI).transfer(sender, amount);
-
-        return true;
-    }
-
-    function pullBalLiquidity(uint256 amount) public whenLpUnlocked returns (bool) {
-        address sender = _msgSender();
-        require(balLiquidityOf(sender) > amount, "DFM-Lge: exceeded balancer liquidity you contributed");
-
-        pulledBalLps[sender] += amount;
-        IERC20(BPT).transfer(sender, amount);
-
-        return true;
     }
 
     function _setupUniswapLiquidity(uint256 uniShare, address token) private {
