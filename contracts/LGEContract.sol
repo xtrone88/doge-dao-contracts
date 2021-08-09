@@ -3,24 +3,47 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "./interfaces/IWeightedPoolFactory.sol";
+import "./interfaces/IWeightedPool.sol";
+import "./interfaces/IVault.sol";
+import "./interfaces/IWETH.sol";
+
+import "./interfaces/IUniswapV2Router.sol";
+
 import "./BaseContract.sol";
 import "./DFMContract.sol";
 
 contract LGEContract is BaseContract {
-    
+    address internal constant WETH = 0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21;
+    address internal constant DAI = 0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21;
+    address internal constant WBTC = 0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21;
+    address internal constant USDC = 0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21;
+
+    address internal constant UNI = 0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc;
+    address internal constant BPT = 0x0e511Aa1a137AaD267dfe3a6bFCa0b856C1a3682;
+
+    IUniswapV2Router internal immutable uniswapRouter =
+        IUniswapV2Router(0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21);
+
+    IVault internal immutable vault =
+        IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
+
+    IWeightedPoolFactory internal immutable weightedPoolFactory =
+        IWeightedPoolFactory(0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9);
+
     bool private concluded;
-    
+
     uint256 private totalContirbution;
     mapping(address => uint256) private contirbutions;
 
-    uint256 internal uniLiquidity;
-    uint256 internal lockLpUntil;
+    mapping(address => uint256) private pulledUniLps;
+    mapping(address => uint256) private pulledBalLps;
+    
+    uint256 private lockLpUntil;
+    uint256 private uniLiquidity;
     
     address private balancerPool;
-
-    function ended() public view returns (bool) {
-        return concluded;
-    }
+    uint256 private balLiquidity;
 
     function totalContirbuted() public view returns (uint256) {
         return totalContirbution;
@@ -30,8 +53,13 @@ contract LGEContract is BaseContract {
         return contirbutions[account];
     }
 
-    modifier isOpened() {
+    modifier opened() {
         require(!concluded, "DFM-Lge: has already concluded");
+        _;
+    }
+
+    modifier unlocked() {
+        require(block.timestamp > lockLpUntil, "DFM-Lge: locked for 6 months");
         _;
     }
 
@@ -39,7 +67,7 @@ contract LGEContract is BaseContract {
         public
         payable
         onlyOwner
-        isOpened
+        opened
         returns (bool)
     {
         require(
@@ -52,12 +80,12 @@ contract LGEContract is BaseContract {
         // send balance to DFM contract
         uint256 total = address(this).balance;
         uint256 dfmShare = (total * 8) / 100;
-        
+
         // provide liquidity to Uniswap
         _setupUniswapLiquidity(total - dfmShare, token);
         // provide weighted pool to Balancer V2
         _setupBalancerPool(dfmShare);
-        
+
         lockLpUntil = block.timestamp + 180 * 1 days;
 
         emit Concluded(block.timestamp);
@@ -65,7 +93,7 @@ contract LGEContract is BaseContract {
         return true;
     }
 
-    function contribute() public payable isOpened {
+    function contribute() public payable opened {
         require(msg.value > 0, "DFM-Lge: can't contribute zero ether");
 
         address sender = _msgSender();
@@ -77,8 +105,38 @@ contract LGEContract is BaseContract {
         emit Contributed(sender, amount);
     }
 
-    function withrawReward() public payable {
-        require(block.timestamp > lockLpUntil, "DFM-Lge: locked for 6 months");
+    function uniLiuqidityOf(address account) public view returns (uint256 balance) {
+        uint256 share = uniLiquidity * contributionOf(account) / totalContirbution;
+        unchecked {
+            balance = share - pulledUniLps[account];   
+        }
+    }
+
+    function balLiquidityOf(address account) public view returns (uint256 balance) {
+        uint256 share = balLiquidity * contributionOf(account) / totalContirbution;
+        unchecked {
+            balance = share - pulledBalLps[account];   
+        }
+    }
+
+    function pullUniLiquidity(uint256 amount) public unlocked returns (bool) {
+        address sender = _msgSender();
+        require(uniLiuqidityOf(sender) > amount, "DFM-Lge: exceeded uniswap liquidity you contributed");
+
+        pulledUniLps[sender] += amount;
+        IERC20(UNI).transfer(sender, amount);
+
+        return true;
+    }
+
+    function pullBalLiquidity(uint256 amount) public unlocked returns (bool) {
+        address sender = _msgSender();
+        require(balLiquidityOf(sender) > amount, "DFM-Lge: exceeded balancer liquidity you contributed");
+
+        pulledBalLps[sender] += amount;
+        IERC20(BPT).transfer(sender, amount);
+
+        return true;
     }
 
     function _setupUniswapLiquidity(uint256 uniShare, address token) private {
@@ -86,7 +144,7 @@ contract LGEContract is BaseContract {
             address(this).balance > uniShare,
             "DFM-Dfm: can't setup uniswap liquidity with zero remain"
         );
-        (, , uint256 liquidity) = uniswapRouter.addLiquidityETH{
+        uniswapRouter.addLiquidityETH{
             value: uniShare
         }(
             token,
@@ -96,7 +154,8 @@ contract LGEContract is BaseContract {
             address(this),
             block.timestamp + 15
         );
-        uniLiquidity += liquidity;
+        
+        uniLiquidity = IERC20(UNI).balanceOf(address(this));
     }
 
     function _setupBalancerPool(uint256 dfmShare) private {
@@ -185,6 +244,8 @@ contract LGEContract is BaseContract {
         tokens[3].approve(address(vault), amounts[3]);
 
         vault.joinPool(poolId, address(this), address(this), joinPoolRequest);
+
+        balLiquidity = IERC20(BPT).balanceOf(address(this));
     }
 
     event Contributed(address indexed from, uint256 amount);
