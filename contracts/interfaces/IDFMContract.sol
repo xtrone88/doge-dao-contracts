@@ -2,6 +2,5 @@
 pragma solidity ^0.8.4;
 
 interface IDFMContract {
-
     function donate(address token, uint256 amount) external returns (bool);
 }

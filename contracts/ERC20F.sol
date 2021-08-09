@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/utils/Context.sol";
 
-contract ERC20F is Context, IERC20, IERC20Metadata {
+contract ERC20F is Pausable, IERC20Metadata {
     mapping(address => uint256) internal _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -138,7 +137,7 @@ contract ERC20F is Context, IERC20, IERC20Metadata {
         address sender,
         address recipient,
         uint256 amount
-    ) internal returns (uint256) {
+    ) internal whenNotPaused returns (uint256) {
         require(sender != address(0), "DDToken: transfer from the zero address");
         require(recipient != address(0), "DDToken: transfer to the zero address");
 
@@ -163,7 +162,7 @@ contract ERC20F is Context, IERC20, IERC20Metadata {
         return fee;
     }
 
-    function _mint(address account, uint256 amount) internal {
+    function _mint(address account, uint256 amount) internal whenNotPaused {
         require(account != address(0), "DDToken: mint to the zero address");
 
         _totalSupply += amount;
@@ -171,7 +170,7 @@ contract ERC20F is Context, IERC20, IERC20Metadata {
         emit Transfer(address(0), account, amount);
     }
 
-    function _burn(address account, uint256 amount) internal {
+    function _burn(address account, uint256 amount) internal whenNotPaused {
         require(account != address(0), "DDToken: burn from the zero address");
 
         uint256 accountBalance = _balances[account];
@@ -188,7 +187,7 @@ contract ERC20F is Context, IERC20, IERC20Metadata {
         address owner,
         address spender,
         uint256 amount
-    ) internal {
+    ) internal whenNotPaused {
         require(owner != address(0), "DDToken: approve from the zero address");
         require(spender != address(0), "DDToken: approve to the zero address");
 

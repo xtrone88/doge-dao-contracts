@@ -2,6 +2,7 @@
 pragma solidity ^0.8.4;
 
 import "./ERC20F.sol";
+
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract DDToken is ERC20F, Ownable {
@@ -11,8 +12,6 @@ contract DDToken is ERC20F, Ownable {
     address private immutable don; // Donation Contract's address
 
     constructor(
-        uint256 _lgeSupply,
-        uint256 _teamSupply,
         address _lge,
         address _dfm,
         address _rwd,
@@ -23,8 +22,10 @@ contract DDToken is ERC20F, Ownable {
         dfm = _dfm;
         rwd = _rwd;
         don = _don;
-        _mint(_lge, _lgeSupply);
-        _mint(owner(), _teamSupply);
+        // mint 9.125 trillion
+        uint256 initialSupply = 9.125e12 * (10**decimals());
+        _mint(_lge, (initialSupply * 88) / 100);
+        _mint(owner(), (initialSupply * 12) / 100);
     }
 
     function decimals() public pure override returns (uint8) {

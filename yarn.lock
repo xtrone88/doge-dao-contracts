@@ -164,6 +164,18 @@
     "@babel/helper-validator-identifier" "^7.14.5"
     to-fast-properties "^2.0.0"
 
+"@balancer-labs/v2-solidity-utils@1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@balancer-labs/v2-solidity-utils/-/v2-solidity-utils-1.0.0.tgz#992b31b8c3398b1d89db6ee0c043dbad07293919"
+  integrity sha512-nTmxPRhErmNTIsSU18wX0sbm6CbVEs3FYpbQDw1QUzPaqg+ono+lYkqExrlf63OBJGE60QPbjTybQaLW1MNoqQ==
+
+"@balancer-labs/v2-vault@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@balancer-labs/v2-vault/-/v2-vault-1.0.0.tgz#d783e5019f36ecf556c65becc541514a97cac291"
+  integrity sha512-md5ri4sGamvg2K3914HMailkhcyo6PhYJmd6k8AMJvTnKG3gr2jNNBuRygtoKGRqT6hrty46/EXQG/Nn/Fk9+g==
+  dependencies:
+    "@balancer-labs/v2-solidity-utils" "1.0.0"
+
 "@ethereumjs/block@^3.4.0":
   version "3.4.0"
   resolved "https://registry.yarnpkg.com/@ethereumjs/block/-/block-3.4.0.tgz#4747b0c06220ee10cbdfe1cbde8cbb0677b1b074"
