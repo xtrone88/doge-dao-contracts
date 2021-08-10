@@ -42,7 +42,7 @@ contract RewardsContract is BaseContract {
 
     function _calcDailyVotes(address sender) private returns (uint256 dailyVotes) {
         dailyVotes = stakes[sender][0] * (stakes[sender][1] * 30 > ((block.timestamp - stakes[sender][2]) / 86400) ? stakes[sender][1] : 1); 
-        votes[sender][0] += votes[sender][1] * (votes[sender][2] == 0 ? 1 : ((block.timestamp - votes[sender][2]) / 86400));
+        votes[sender][0] += votes[sender][1] * (votes[sender][2] == 0 ? 0 : ((block.timestamp - votes[sender][2]) / 86400));
         votes[sender][1] = dailyVotes;
         votes[sender][2] = block.timestamp;
     }
