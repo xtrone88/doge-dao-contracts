@@ -8,7 +8,10 @@ contract RewardsContract is BaseContract {
 
     uint256 private totalStakes;
     mapping(address => uint256[3]) private stakes;
-    mapping(address => uint256[3]) private votes;
+    mapping(address => uint256[3]) private credits;
+    mapping(address => uint256[7]) private bundles;
+
+    uint256[7] private fees;
 
     function setupDD(address _dd) public onlyOwner {
         ddToken = _dd;
@@ -29,7 +32,7 @@ contract RewardsContract is BaseContract {
         stakes[sender][2] = block.timestamp;
         totalStakes += amount;
         
-        return _calcDailyVotes(sender);
+        return _calcDailyCredits(sender);
     }
 
     function unstake(uint256 amount) public whenStartup returns (uint256) {
@@ -42,13 +45,46 @@ contract RewardsContract is BaseContract {
 
         IERC20(ddToken).transfer(sender, amount - fee);
 
-        return _calcDailyVotes(sender);
+        return _calcDailyCredits(sender);
     }
 
-    function _calcDailyVotes(address sender) private returns (uint256 dailyVotes) {
-        dailyVotes = stakes[sender][0] * (stakes[sender][1] * 30 > ((block.timestamp - stakes[sender][2]) / 86400) ? stakes[sender][1] : 1); 
-        votes[sender][0] += votes[sender][1] * (votes[sender][2] == 0 ? 0 : ((block.timestamp - votes[sender][2]) / 86400));
-        votes[sender][1] = dailyVotes;
-        votes[sender][2] = block.timestamp;
+    function breakCredit(uint256 amount, uint8 unit) public whenStartup returns (bool) {
+        address sender = _msgSender();
+        require(unit > 0 && unit < 6 && bundles[sender][unit] > amount, "DFM-Rewards: unit exceeds range");
+
+        amount *= 1000;
+        uint256 fee = amount * 2 / 10;
+        credits[sender][0] -= fee * 1000 ** (unit - 1);
+        bundles[sender][unit - 1] += amount - fee;
+        fees[unit - 1] += fee;
+
+        return true;
+    }
+
+    function voteRound(uint256 round, uint256 credit) public whenStartup returns (bool) {
+        address sender = _msgSender();
+        require(credit > 0 && credits[sender][0] > credit, "DFM-Rewards: credit exceeds range");
+
+        uint256 fee = credit * 2 / 10;
+        credit -= fee;
+    }
+
+    function _calcDailyCredits(address sender) private returns (uint256 dailyCredits) {
+        dailyCredits = stakes[sender][0] * (stakes[sender][1] * 30 > ((block.timestamp - stakes[sender][2]) / 86400) ? stakes[sender][1] : 1);
+        
+        uint256 newly = credits[sender][1] * (credits[sender][2] == 0 ? 0 : ((block.timestamp - credits[sender][2]) / 86400));
+        credits[sender][0] += newly;
+        credits[sender][1] = dailyCredits;
+        credits[sender][2] = block.timestamp;
+
+        for (uint8 i = 0; i < bundles[sender].length; i++) {
+            if (newly == 0) {
+                break;
+            }
+            uint256 unit = 1000 * (i + 1);
+            uint256 remain = (newly % unit) / (unit / 1000);
+            bundles[sender][i] += remain;
+            newly -= remain;
+        }
     }
 }
