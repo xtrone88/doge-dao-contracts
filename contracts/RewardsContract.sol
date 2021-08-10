@@ -10,6 +10,7 @@ contract RewardsContract is BaseContract {
     mapping(address => uint256[3]) private stakes;
     mapping(address => uint256[3]) private credits;
     mapping(address => uint256[7]) private bundles;
+    mapping(uint256 => mapping(address => uint256)) private rounds;
 
     uint256[7] private fees;
 
@@ -65,8 +66,24 @@ contract RewardsContract is BaseContract {
         address sender = _msgSender();
         require(credit > 0 && credits[sender][0] > credit, "DFM-Rewards: credit exceeds range");
 
+        credits[sender][0] -= credit;
         uint256 fee = credit * 2 / 10;
         credit -= fee;
+
+        rounds[round][sender] += credit;
+
+        for (uint8 i = 0; i < fees.length; i++) {
+            uint256 unit = 1000 * (i + 1);
+            uint256 remain = (credit % unit) / (unit / 1000);
+            bundles[sender][i] -= remain;
+            credit -= remain;
+
+            remain = (fee % unit) / (unit / 1000);
+            fees[i] += remain;
+            fee -= remain;
+        }
+
+        return true;
     }
 
     function _calcDailyCredits(address sender) private returns (uint256 dailyCredits) {
