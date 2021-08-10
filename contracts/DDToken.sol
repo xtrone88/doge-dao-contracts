@@ -10,34 +10,31 @@ contract DDToken is ERC20F, Ownable {
     address private immutable dfm; // DFM Contract's address
     address private immutable rwd; // Reward Contract's address
     address private immutable don; // Donation Contract's address
+    address private immutable mkt; // Market Wallet's address
+
+    uint256 private totalFee;
 
     constructor(
         address _lge,
         address _dfm,
         address _rwd,
-        address _don
-    ) ERC20F("DogeFundMe", "DD", 200) {
-        // 200 means 2% for fee expression, 2 equals 0.02%
+        address _don,
+        address _mkt
+    ) ERC20F("DogeFundMe", "DD", 500) {
+        // 500 means 5% for fee expression, 2 equals 0.02%
         lge = _lge;
         dfm = _dfm;
         rwd = _rwd;
         don = _don;
+        mkt = _mkt;
         // mint 9.125 trillion
         uint256 initialSupply = 9.125e12 * (10**decimals());
-        _mint(_lge, (initialSupply * 88) / 100);
-        _mint(owner(), (initialSupply * 12) / 100);
+        _mint(_lge, initialSupply * 95 / 100);
+        _mint(owner(), initialSupply * 5 / 100);
     }
 
     function decimals() public pure override returns (uint8) {
         return 8;
-    }
-
-    function _storeFee(uint256 fee) private {
-        uint256 dfmShare = (fee * 80) / 100;
-        unchecked {
-            _balances[rwd] += fee - dfmShare;
-        }
-        _balances[dfm] += dfmShare;
     }
 
     function mint(uint256 amount) public onlyOwner returns (bool) {
@@ -79,5 +76,14 @@ contract DDToken is ERC20F, Ownable {
         }
 
         return true;
+    }
+
+    function _storeFee(uint256 fee) private {
+        uint256 share = fee / 5;
+        _balances[owner()] += share * 2;
+        _balances[rwd] += share;
+        _balances[dfm] += share;
+        _balances[mkt] += share;
+        totalFee += fee;
     }
 }

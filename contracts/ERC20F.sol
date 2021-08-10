@@ -124,7 +124,7 @@ contract ERC20F is Pausable, IERC20Metadata {
         require(amount < 10000, "DDToken: transfer amount is too small");
 
         uint256 receiveal = amount;
-        uint256 fee = (amount * _fee) / 10000;
+        uint256 fee = amount * _fee / 10000;
 
         unchecked {
             receiveal = amount - fee;
