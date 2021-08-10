@@ -8,8 +8,6 @@ contract RewardsContract is BaseContract {
 
     uint256 private totalStakes;
     mapping(address => uint256[3]) private stakes;
-
-    uint256 private totalVotes;
     mapping(address => uint256[3]) private votes;
 
     function setDD(address _dd) public onlyOwner {
@@ -35,6 +33,7 @@ contract RewardsContract is BaseContract {
 
         uint256 fee = amount * 8 / 100;
         stakes[sender][0] -= amount;
+        totalStakes -= amount;
 
         IERC20(ddToken).transfer(sender, amount - fee);
 
