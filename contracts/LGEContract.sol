@@ -46,8 +46,8 @@ contract LGEContract is BaseContract {
     uint256 internal balLiquidityFund;
     uint256 internal balLiquidity;
     address internal balancerPool;
-
     uint256 internal dfmStartTime;
+    address internal ddToken;
 
     function totalContirbuted() public view returns (uint256) {
         return totalContirbution;
@@ -67,7 +67,7 @@ contract LGEContract is BaseContract {
         _;
     }
 
-    function conclude(address token)
+    function concludeLge(address _ddToken)
         public
         payable
         onlyOwner
@@ -80,6 +80,7 @@ contract LGEContract is BaseContract {
         );
 
         lgeClosed = true;
+        ddToken = _ddToken;
 
         // send balance to DFM contract
         uint256 total = address(this).balance;
@@ -87,10 +88,10 @@ contract LGEContract is BaseContract {
         uniLiquidityFund = total - balLiquidityFund;
 
         // provide liquidity to Uniswap with dd token
-        _setupUniswapLiquidity(uniLiquidityFund, token);
+        _setupUniswapLiquidity();
 
         // provide weighted pool to Balancer V2
-        _setupBalancerPool(balLiquidityFund);
+        _setupBalancerPool();
 
         lockLpUntil = block.timestamp + 180 * 1 days;
 
@@ -114,14 +115,10 @@ contract LGEContract is BaseContract {
         emit Contributed(sender, amount);
     }
 
-    function _setupUniswapLiquidity(uint256 uniShare, address token) private {
-        require(
-            address(this).balance > uniShare,
-            "DFM-Dfm: can't setup uniswap liquidity with zero remain"
-        );
-        uniswapRouter.addLiquidityETH{value: uniShare}(
-            token,
-            IERC20(token).balanceOf(address(this)),
+    function _setupUniswapLiquidity() private {
+        uniswapRouter.addLiquidityETH{value: uniLiquidityFund}(
+            ddToken,
+            IERC20(ddToken).balanceOf(address(this)),
             0,
             0,
             address(this),
@@ -131,20 +128,10 @@ contract LGEContract is BaseContract {
         uniLiquidity = IERC20(UNI).balanceOf(address(this));
     }
 
-    function _setupBalancerPool(uint256 dfmShare) private {
-        require(
-            address(this).balance > dfmShare,
-            "DFM-Dfm: can't setup balancer pool with zero remain"
-        );
-        require(
-            balancerPool == address(0),
-            "DFM-Dfm: has already setup balancer"
-        );
+    function _setupBalancerPool() private {
+        IWETH(WETH).deposit{value: balLiquidityFund}();
 
-        uint256 total = address(this).balance;
-        IWETH(WETH).deposit{value: total}();
-
-        uint256 share = total / 4;
+        uint256 share = balLiquidityFund / 4;
         address[] memory path = new address[](2);
         uint256[] memory amounts = new uint256[](4);
         IERC20[] memory tokens = new IERC20[](4);
@@ -177,8 +164,6 @@ contract LGEContract is BaseContract {
             address(this)
         );
 
-        bytes32 poolId = IWeightedPool(balancerPool).getPoolId();
-
         bytes memory userData = abi.encode(uint256(0), amounts);
         IVault.JoinPoolRequest memory joinPoolRequest = IVault.JoinPoolRequest({
             assets: assets,
@@ -186,12 +171,10 @@ contract LGEContract is BaseContract {
             userData: userData,
             fromInternalBalance: false
         });
-
         for (uint8 i = 0; i < 4; i++) {
             tokens[i].approve(address(vault), amounts[i]);
         }
-        
-        vault.joinPool(poolId, address(this), address(this), joinPoolRequest);
+        vault.joinPool(IWeightedPool(balancerPool).getPoolId(), address(this), address(this), joinPoolRequest);
 
         balLiquidity = IERC20(BPT).balanceOf(address(this));
     }
