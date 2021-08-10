@@ -10,11 +10,16 @@ contract RewardsContract is BaseContract {
     mapping(address => uint256[3]) private stakes;
     mapping(address => uint256[3]) private votes;
 
-    function setDD(address _dd) public onlyOwner {
+    function setupDD(address _dd) public onlyOwner {
         ddToken = _dd;
     }
 
-    function stake(uint256 amount, uint256 period) public returns (uint256) {
+    modifier whenStartup() {
+        require(ddToken != address(0), "DFM-Rewards: not set up DD token");
+        _;
+    }
+
+    function stake(uint256 amount, uint256 period) public whenStartup returns (uint256) {
         address sender = _msgSender();
         IERC20(ddToken).transferFrom(sender, address(this), amount);
 
@@ -27,7 +32,7 @@ contract RewardsContract is BaseContract {
         return _calcDailyVotes(sender);
     }
 
-    function unstake(uint256 amount) public returns (uint256) {
+    function unstake(uint256 amount) public whenStartup returns (uint256) {
         address sender = _msgSender();
         require(stakes[sender][0] >= amount, "DFM-Rewards: exceeds the staked amount");
 
