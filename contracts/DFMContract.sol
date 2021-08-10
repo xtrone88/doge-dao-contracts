@@ -12,6 +12,9 @@ contract DFMContract is LGEContract {
     mapping(address => uint256) private pulledBalLps;
 
     mapping(address => uint256[]) rewards;
+    uint256 private rewardsPercentage = 4;
+
+    uint256[] private treasury = new uint256[](4);
 
     modifier whenDfmAlive() {
         require(dfmOpened, "DFM-Dfm: has not yet opened");
@@ -78,7 +81,11 @@ contract DFMContract is LGEContract {
         return true;
     }
 
-    function withrawRewards() public whenDfmAlive returns (bool) {
+    function setRewardsPercentage(uint256 percentage) public onlyOwner {
+        rewardsPercentage = percentage;
+    }
+
+    function withrawRewards() public whenDfmAlive returns (uint256) {
         address sender = _msgSender();
         require(rewards[sender].length < 4, "DFM-Dfm: no rewards");
         
@@ -97,14 +104,27 @@ contract DFMContract is LGEContract {
 
         require(uniShare + balShare > 0, "DFM-Dfm: no locked values");
 
-        uint256 amount = (uniShare + balShare) * 4 / 100;
+        uint256 amount = (uniShare + balShare) * rewardsPercentage / 100;
         for (uint8 i = 0; i < quarters; i++) {
             rewards[sender].push(amount);
         }
 
-        _withrawFund(amount * quarters);
+        return _withrawFund(amount * quarters, false);
+    }
 
-        return true;
+    function withrawTreasury() public onlyOwner whenDfmAlive returns (uint256) {
+        require(treasury[3] == 0, "DFM-Dfm: treasury has been used fully");
+
+        uint256 quarters = (block.timestamp - dfmStartTime) / 86400 / 90;
+        if (quarters > 4) {
+            quarters = 4;
+        }
+
+        require(quarters > 0 && treasury[quarters - 1] == 0, "DFM-Dfm: not reached withraw time");
+
+        treasury[quarters - 1] = _withrawFund(8, true);
+
+        return treasury[quarters - 1];
     }
 
     function _balanceOfFund() private view returns (uint256, uint256[] memory, uint256[] memory) {
@@ -115,63 +135,40 @@ contract DFMContract is LGEContract {
         address[] memory path = new address[](2);
         path[1] = WETH;
 
-        balances[0] = IERC20(WETH).balanceOf(address(this));
-        converted[0] = balances[0];
-        total += balances[0];
-
-        balances[1] = IERC20(DAI).balanceOf(address(this));
-        path[0] = DAI;
-        converted[1] = uniswapRouter.getAmountsOut(balances[1], path)[1];
-        total += converted[1];
-
-        balances[2] = IERC20(WBTC).balanceOf(address(this));
-        path[0] = WBTC;
-        converted[2] = uniswapRouter.getAmountsOut(balances[2], path)[1];
-        total += converted[2];
-
-        balances[3] = IERC20(USDC).balanceOf(address(this));
-        path[0] = USDC;
-        converted[3] = uniswapRouter.getAmountsOut(balances[3], path)[1];
-        total += converted[3];
-
+        for (uint8 i = 0; i < COINS.length; i++) {
+            balances[i] = IERC20(COINS[i]).balanceOf(address(this));
+            path[0] = COINS[i];
+            converted[i] = COINS[i] == WETH ? balances[i] : uniswapRouter.getAmountsOut(balances[i], path)[1];
+            total += converted[i];
+        }
+        
         return (total, balances, converted);
     }
 
-    function _withrawFund(uint256 amount) private {
+    function _withrawFund(uint256 amount, bool percentage) private returns(uint256) {
         (uint256 total, , uint256[] memory converted) = _balanceOfFund();
+        if (percentage) {
+            amount = total * amount / 100;
+        }
         require(total > amount, "DFM-Dfm: withraw exceeds the balance");
-        
-        if (converted[0] >= amount) {
-            IERC20(WETH).transfer(_msgSender(), amount);
-            return;
-        }
-        
-        uint256 remain = amount - converted[0];
-        if (converted[1] >= remain) {
-            _swapTokenForExact(DAI, WETH, remain);
-            IERC20(WETH).transfer(_msgSender(), amount);
-            return;
-        } else {
-            _swapTokenForExact(DAI, WETH, converted[1]);
+
+        uint256 remain = amount;
+        for (uint8 i = 0; i < COINS.length; i++) {
+            if (converted[i] >= remain) {
+                if (COINS[i] != WETH) {
+                    _swapTokenForExact(COINS[i], WETH, remain);
+                }
+                IERC20(WETH).transfer(_msgSender(), amount);
+                return amount;
+            }
+            _swapTokenForExact(COINS[i], WETH, converted[i]);
+            remain = amount - converted[i];
         }
 
-        remain = remain - converted[1];
-        if (converted[2] >= remain) {
-            _swapTokenForExact(WBTC, WETH, remain);
-            IERC20(WETH).transfer(_msgSender(), amount);
-            return;
-        } else {
-            _swapTokenForExact(WBTC, WETH, converted[2]);
-        }
-
-        remain = remain - converted[2];
-        if (converted[3] >= remain) {
-            _swapTokenForExact(USDC, WETH, remain);
-            IERC20(WETH).transfer(_msgSender(), amount);
-            return;
-        } else {
-            _swapTokenForExact(USDC, WETH, converted[3]);
-        }
+        amount -= remain;
+        IERC20(WETH).transfer(_msgSender(), amount);
+        
+        return amount;
     }
 
     function _swapTokenForExact(address tokenIn, address tokenOut, uint256 amountOut) private {

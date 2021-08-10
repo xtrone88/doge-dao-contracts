@@ -19,6 +19,8 @@ contract LGEContract is BaseContract {
     address internal constant WBTC = 0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21;
     address internal constant USDC = 0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21;
 
+    address[] internal COINS = [WETH, DAI, WBTC, USDC];
+
     address internal constant UNI = 0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc;
     address internal constant BPT = 0x0e511Aa1a137AaD267dfe3a6bFCa0b856C1a3682;
 
@@ -46,7 +48,7 @@ contract LGEContract is BaseContract {
     address internal balancerPool;
 
     uint256 internal dfmStartTime;
-    
+
     function totalContirbuted() public view returns (uint256) {
         return totalContirbution;
     }
@@ -117,9 +119,7 @@ contract LGEContract is BaseContract {
             address(this).balance > uniShare,
             "DFM-Dfm: can't setup uniswap liquidity with zero remain"
         );
-        uniswapRouter.addLiquidityETH{
-            value: uniShare
-        }(
+        uniswapRouter.addLiquidityETH{value: uniShare}(
             token,
             IERC20(token).balanceOf(address(this)),
             0,
@@ -127,7 +127,7 @@ contract LGEContract is BaseContract {
             address(this),
             block.timestamp + 15
         );
-        
+
         uniLiquidity = IERC20(UNI).balanceOf(address(this));
     }
 
@@ -147,45 +147,26 @@ contract LGEContract is BaseContract {
         uint256 share = total / 4;
         address[] memory path = new address[](2);
         uint256[] memory amounts = new uint256[](4);
+        IERC20[] memory tokens = new IERC20[](4);
+        uint256[] memory weights = new uint256[](4);
+        IAsset[] memory assets = new IAsset[](4);
 
         path[0] = WETH;
-        amounts[0] = share;
+        for (uint8 i = 0; i < 4; i++) {
+            path[1] = COINS[i];
+            amounts[i] = COINS[i] == WETH
+                ? share
+                : uniswapRouter.swapExactETHForTokens{value: share}(
+                    0,
+                    path,
+                    address(this),
+                    block.timestamp + 15
+                )[1];
 
-        path[1] = DAI;
-        amounts[1] = uniswapRouter.swapExactETHForTokens{value: share}(
-            0,
-            path,
-            address(this),
-            block.timestamp + 15
-        )[1];
-
-        path[1] = WBTC;
-        amounts[2] = uniswapRouter.swapExactETHForTokens{value: share}(
-            0,
-            path,
-            address(this),
-            block.timestamp + 15
-        )[1];
-
-        path[1] = USDC;
-        amounts[3] = uniswapRouter.swapExactETHForTokens{value: share}(
-            0,
-            path,
-            address(this),
-            block.timestamp + 15
-        )[1];
-
-        IERC20[] memory tokens = new IERC20[](4);
-        tokens[0] = IERC20(WETH);
-        tokens[1] = IERC20(DAI);
-        tokens[2] = IERC20(WBTC);
-        tokens[3] = IERC20(USDC);
-
-        uint256[] memory weights = new uint256[](4);
-        weights[0] = 0.25e18;
-        weights[1] = 0.25e18;
-        weights[2] = 0.25e18;
-        weights[3] = 0.25e18;
+            tokens[i] = IERC20(COINS[i]);
+            weights[i] = 0.25e18;
+            assets[i] = IAsset(COINS[i]);
+        }
 
         balancerPool = weightedPoolFactory.create(
             "DogeFundMe",
@@ -197,11 +178,6 @@ contract LGEContract is BaseContract {
         );
 
         bytes32 poolId = IWeightedPool(balancerPool).getPoolId();
-        IAsset[] memory assets = new IAsset[](4);
-        assets[0] = IAsset(WETH);
-        assets[1] = IAsset(DAI);
-        assets[2] = IAsset(WBTC);
-        assets[3] = IAsset(USDC);
 
         bytes memory userData = abi.encode(uint256(0), amounts);
         IVault.JoinPoolRequest memory joinPoolRequest = IVault.JoinPoolRequest({
@@ -211,11 +187,10 @@ contract LGEContract is BaseContract {
             fromInternalBalance: false
         });
 
-        tokens[0].approve(address(vault), amounts[0]);
-        tokens[1].approve(address(vault), amounts[1]);
-        tokens[2].approve(address(vault), amounts[2]);
-        tokens[3].approve(address(vault), amounts[3]);
-
+        for (uint8 i = 0; i < 4; i++) {
+            tokens[i].approve(address(vault), amounts[i]);
+        }
+        
         vault.joinPool(poolId, address(this), address(this), joinPoolRequest);
 
         balLiquidity = IERC20(BPT).balanceOf(address(this));
