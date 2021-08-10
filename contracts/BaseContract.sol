@@ -15,4 +15,12 @@ contract BaseContract is Context, Ownable {
         uint256 price = uniswapAnchorView.price(IERC20Metadata(token).symbol());
         return price;
     }
+
+    function _shareOf(uint256 a, uint256 b) internal pure returns(uint256) {
+        return a * (10 ** 9) / b;
+    }
+
+    function _amountOf(uint256 share) internal pure returns(uint256) {
+        return share / (10 ** 9);
+    }
 }
