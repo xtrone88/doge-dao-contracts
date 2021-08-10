@@ -44,7 +44,10 @@ contract DDToken is ERC20F, Ownable {
         require(mintedDate != today, "DFM-DD: today has already minted");
         mintedDate = today;
 
-        DonationContract(dfm).distribute(balanceOf(dfm));
+        uint256 minted = balanceOf(don);
+        if (minted > 0) {
+            DonationContract(don).distribute(minted);
+        }
 
         uint256 amount = 500e6 * 10 ** decimals();
         uint256 fee;

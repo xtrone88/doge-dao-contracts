@@ -25,6 +25,7 @@ contract DonationContract is BaseContract {
 
     function distribute(uint256 minted) external whenStartup {
         require(ddToken == _msgSender(), "DFM-Don: caller is not DD token");
+        
         uint256 yesterday = today - 86400;
         if (distedDate == yesterday) {
             return;
