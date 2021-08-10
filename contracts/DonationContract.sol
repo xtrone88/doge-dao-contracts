@@ -12,6 +12,7 @@ contract DonationContract is BaseContract {
     mapping(uint256 => address[]) private donators;
 
     uint256 private today;
+    uint256 private distedDate;
 
     constructor(address payable _dfm) {
         dfm = _dfm;
@@ -22,23 +23,23 @@ contract DonationContract is BaseContract {
         return block.timestamp / 86400;
     }
 
-    function distribute(address ddtoken) public onlyOwner returns (bool) {
+    function distribute(uint256 minted) external whenStartup {
+        require(ddToken == _msgSender(), "DFM-Don: caller is not DD token");
         uint256 yesterday = today - 86400;
-        uint256 total = totalDonation[yesterday];
-
-        require(total > 0, "DFM-Don: no doantions");
-        totalDonation[yesterday] = 0;
-
-        uint256 minted = IERC20(ddtoken).balanceOf(address(this));
-        require(minted > 0, "DFM-Don: not minted for daily distribution");
-
-        for (uint256 i = 0; i < donators[yesterday].length; i++) {
-            uint256 share = (minted / total) *
-                donations[yesterday][donators[yesterday][i]];
-            IERC20(ddtoken).approve(donators[yesterday][i], share);
+        if (distedDate == yesterday) {
+            return;
         }
+        distedDate = yesterday;
 
-        return true;
+        uint256 total = totalDonation[yesterday];
+        if (total > 0) {
+            totalDonation[yesterday] = 0;
+            for (uint256 i = 0; i < donators[yesterday].length; i++) {
+                uint256 share = (minted / total) *
+                    donations[yesterday][donators[yesterday][i]];
+                IERC20(ddToken).approve(donators[yesterday][i], share);
+            }
+        }
     }
 
     function donate(address token, uint256 amount) public returns (bool) {

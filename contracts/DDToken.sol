@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "./ERC20F.sol";
-
 import "@openzeppelin/contracts/access/Ownable.sol";
+
+import "./ERC20F.sol";
+import "./DonationContract.sol";
 
 contract DDToken is ERC20F, Ownable {
     address private immutable lge; // LGE Contract's address
@@ -13,6 +14,7 @@ contract DDToken is ERC20F, Ownable {
     address private immutable mkt; // Market Wallet's address
 
     uint256 private totalFee;
+    uint256 private mintedDate;
 
     constructor(
         address _lge,
@@ -28,7 +30,7 @@ contract DDToken is ERC20F, Ownable {
         don = _don;
         mkt = _mkt;
         // mint 9.125 trillion
-        uint256 initialSupply = 9.125e12 * (10**decimals());
+        uint256 initialSupply = 9.125e12 * 10**decimals();
         _mint(_lge, initialSupply * 95 / 100);
         _mint(owner(), initialSupply * 5 / 100);
     }
@@ -37,14 +39,20 @@ contract DDToken is ERC20F, Ownable {
         return 8;
     }
 
-    function mint(uint256 amount) public onlyOwner returns (bool) {
+    function mintDaily() public onlyOwner returns (bool) {
+        uint256 today = block.timestamp / 86400;
+        require(mintedDate != today, "DFM-DD: today has already minted");
+        mintedDate = today;
+
+        DonationContract(dfm).distribute(balanceOf(dfm));
+
+        uint256 amount = 500e6 * 10 ** decimals();
         uint256 fee;
         (, fee) = _calculateFee(amount);
         _mint(don, amount);
-        unchecked {
-            _balances[don] -= fee;
-        }
+        _balances[don] -= fee;
         _storeFee(fee);
+
         return true;
     }
 

@@ -47,7 +47,6 @@ contract LGEContract is BaseContract {
     uint256 internal balLiquidity;
     address internal balancerPool;
     uint256 internal dfmStartTime;
-    address internal ddToken;
 
     function totalContirbuted() public view returns (uint256) {
         return totalContirbution;
@@ -67,10 +66,11 @@ contract LGEContract is BaseContract {
         _;
     }
 
-    function concludeLge(address _ddToken)
+    function concludeLge()
         public
         payable
         onlyOwner
+        whenStartup
         whenLgeAlive
         returns (bool)
     {
@@ -78,9 +78,7 @@ contract LGEContract is BaseContract {
             address(this).balance > 0,
             "DFM-Lge: can't conclude with zero balance"
         );
-
         lgeClosed = true;
-        ddToken = _ddToken;
 
         // send balance to DFM contract
         uint256 total = address(this).balance;

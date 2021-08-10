@@ -4,8 +4,6 @@ pragma solidity ^0.8.4;
 import "./BaseContract.sol";
 
 contract RewardsContract is BaseContract {
-    address private ddToken;
-
     uint256 private totalStakes;
     mapping(address => uint256[3]) private stakes;
     mapping(address => uint256[3]) private credits;
@@ -13,15 +11,6 @@ contract RewardsContract is BaseContract {
     mapping(uint256 => mapping(address => uint256)) private rounds;
 
     uint256[7] private fees;
-
-    function setupDD(address _dd) public onlyOwner {
-        ddToken = _dd;
-    }
-
-    modifier whenStartup() {
-        require(ddToken != address(0), "DFM-Rewards: not set up DD token");
-        _;
-    }
 
     function stake(uint256 amount, uint256 period) public whenStartup returns (uint256) {
         address sender = _msgSender();
