@@ -53,9 +53,15 @@ contract DonationContract is BaseContract {
         IERC20(token).approve(dfm, amount);
         DFMContract(dfm).donate(token, amount);
 
-        uint256 price = _priceOf(token) * amount;
-        donations[today][sender] += price;
-        totalDonation[today] += price;
+        if (token != WETH) {
+            address[] memory path = new address[](2);
+            path[0] = token;
+            path[1] = WETH;
+            amount = uniswapRouter.getAmountsOut(amount, path)[1];
+        }
+        
+        donations[today][sender] += amount;
+        totalDonation[today] += amount;
         donators[today].push(sender);
 
         return true;

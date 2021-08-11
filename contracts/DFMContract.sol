@@ -121,7 +121,6 @@ contract DFMContract is LGEContract {
         }
 
         require(quarters > 0 && treasury[quarters - 1] == 0, "DFM-Dfm: not reached withraw time");
-
         treasury[quarters - 1] = _withrawFund(8, true);
 
         return treasury[quarters - 1];

@@ -8,30 +8,31 @@ import "./interfaces/IWeightedPool.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IWETH.sol";
 
-import "./interfaces/IUniswapV2Router.sol";
-
 import "./BaseContract.sol";
 import "./DFMContract.sol";
 
 contract LGEContract is BaseContract {
-    address internal constant WETH = 0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21;
-    address internal constant DAI = 0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21;
-    address internal constant WBTC = 0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21;
-    address internal constant USDC = 0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21;
+    // For MainNet
+    // address internal constant UNI = 0xd3d2E2692501A5c9Ca623199D38826e513033a17;
+    // address internal constant BPT = 0x2feb4A6322432cBe44dc54A4959AC141eCE53d7c;
 
-    address[] internal COINS = [WETH, DAI, WBTC, USDC];
+    // IVault internal immutable vault =
+    //     IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
-    address internal constant UNI = 0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc;
-    address internal constant BPT = 0x0e511Aa1a137AaD267dfe3a6bFCa0b856C1a3682;
+    // IWeightedPoolFactory internal immutable weightedPoolFactory =
+    //     IWeightedPoolFactory(0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9);
 
-    IUniswapV2Router internal immutable uniswapRouter =
-        IUniswapV2Router(0x9876A5bc27ff511bF5dA8f58c8F93281E5BD1f21);
+    // For Kovan
+    address internal constant UNI = 0x18F0F615ac27752bDcdA38ea34cD43f4d736E612;
+    address internal constant BPT = 0xC4283c4aD143698dC9E667150Ea379dc56c8A632;
 
     IVault internal immutable vault =
         IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     IWeightedPoolFactory internal immutable weightedPoolFactory =
         IWeightedPoolFactory(0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9);
+
+    address[] internal COINS = [WETH, DAI, WBTC, USDC];
 
     bool private lgeClosed;
     bool internal dfmOpened;

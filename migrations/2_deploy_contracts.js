@@ -1,6 +1,5 @@
-const LGEContract = artifacts.require("LGEContract");
+const DFMContract = artifacts.require("DFMContract");
 
-module.exports = function (deployer, network, accounts) {
-    const numConfirmationsRequired = 3; 
-    deployer.deploy(LGEContract, numConfirmationsRequired);
+module.exports = function (deployer, network) {
+    deployer.deploy(DFMContract);
 };
