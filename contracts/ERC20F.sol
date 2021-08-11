@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract ERC20F is Pausable, IERC20Metadata {
-    mapping(address => uint256) internal _balances;
+contract ERC20F is Context, IERC20Metadata {
+    bool private _paused;
 
+    mapping(address => uint256) internal _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
 
     uint256 private _totalSupply;
-
     string private _name;
     string private _symbol;
     uint256 private _fee;
@@ -195,4 +195,31 @@ contract ERC20F is Pausable, IERC20Metadata {
 
         emit Approval(owner, spender, amount);
     }
+
+    function paused() public view virtual returns (bool) {
+        return _paused;
+    }
+
+    modifier whenNotPaused() {
+        require(!paused(), "Pausable: paused");
+        _;
+    }
+
+    modifier whenPaused() {
+        require(paused(), "Pausable: not paused");
+        _;
+    }
+
+    function _pause() internal virtual whenNotPaused {
+        _paused = true;
+        emit Paused(_msgSender());
+    }
+
+    function _unpause() internal virtual whenPaused {
+        _paused = false;
+        emit Unpaused(_msgSender());
+    }
+
+    event Paused(address account);
+    event Unpaused(address account);
 }

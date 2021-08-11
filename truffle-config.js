@@ -18,7 +18,7 @@
  *
  */
 
-// const HDWalletProvider = require('@truffle/hdwallet-provider');
+const HDWalletProvider = require('@truffle/hdwallet-provider');
 // const infuraKey = "fj4jll3k.....";
 //
 // const fs = require('fs');
@@ -58,14 +58,22 @@ module.exports = {
       // },
       // Useful for deploying to a public network.
       // NB: It's important to wrap the provider as a function.
-      infura: {
-        provider: () => new HDWalletProvider(mnemonic, `https://ropsten.infura.io/v3/1603d226fdf0402e87f5f5d56ae7b66a`),
-        network_id: 3,       // Ropsten's id
-        gas: 5500000,        // Ropsten has a lower block limit than mainnet
-        confirmations: 2,    // # of confs to wait between deployments. (default: 0)
-        timeoutBlocks: 2000,  // # of blocks before a deployment times out  (minimum/default: 50)
-        skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
+      // infura: {
+      //   provider: () => new HDWalletProvider(mnemonic, `https://ropsten.infura.io/v3/1603d226fdf0402e87f5f5d56ae7b66a`),
+      //   network_id: 3,       // Ropsten's id
+      //   gas: 5500000,        // Ropsten has a lower block limit than mainnet
+      //   confirmations: 2,    // # of confs to wait between deployments. (default: 0)
+      //   timeoutBlocks: 2000,  // # of blocks before a deployment times out  (minimum/default: 50)
+      //   skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
+      // },
+
+      kovan: {
+        provider: () => new HDWalletProvider(['8dd7404640b7f48e90967ad86e6402cfc39163cd391e32e07042f6f5c0a9639d'], 'https://kovan.infura.io/v3/87d3726deced4f5c8a3c2aed2368d742'),
+        networkCheckTimeout: 100000,
+        network_id: 42,
+        gas: 5500000,
       },
+
       // Useful for private networks
       // private: {
       // provider: () => new HDWalletProvider(mnemonic, `https://network.io`),
