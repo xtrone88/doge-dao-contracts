@@ -121,7 +121,7 @@ contract ERC20F is Context, IERC20Metadata {
     }
 
     function _calculateFee(uint256 amount) internal view returns (uint256, uint256) {
-        require(amount < 10000, "DDToken: transfer amount is too small");
+        require(amount > 10000, "DDToken: transfer amount is too small");
 
         uint256 receiveal = amount;
         uint256 fee = amount * _fee / 10000;
