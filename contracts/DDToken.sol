@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-
 import "./ERC20F.sol";
 import "./DonationContract.sol";
 
-contract DDToken is ERC20F, Ownable {
+contract DDToken is ERC20F {
     address private immutable lge; // LGE Contract's address
     address private immutable dfm; // DFM Contract's address
     address private immutable rwd; // Reward Contract's address

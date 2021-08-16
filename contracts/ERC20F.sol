@@ -4,7 +4,9 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract ERC20F is Context, IERC20Metadata {
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract ERC20F is Context, Ownable, IERC20Metadata {
     bool private _paused;
 
     mapping(address => uint256) internal _balances;
@@ -196,7 +198,7 @@ contract ERC20F is Context, IERC20Metadata {
         emit Approval(owner, spender, amount);
     }
 
-    function paused() public view virtual returns (bool) {
+    function paused() public view returns (bool) {
         return _paused;
     }
 
@@ -210,12 +212,12 @@ contract ERC20F is Context, IERC20Metadata {
         _;
     }
 
-    function _pause() internal virtual whenNotPaused {
+    function pause() public onlyOwner whenNotPaused {
         _paused = true;
         emit Paused(_msgSender());
     }
 
-    function _unpause() internal virtual whenPaused {
+    function unpause() public onlyOwner whenPaused {
         _paused = false;
         emit Unpaused(_msgSender());
     }

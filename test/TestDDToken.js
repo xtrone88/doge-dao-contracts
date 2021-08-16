@@ -23,7 +23,7 @@ contract('DDToken', (accounts) => {
         let teamS = await ddToken.balanceOf(accounts[0]);
         let dfmS = await ddToken.balanceOf(dfmContract.address);
         let rwdS = await ddToken.balanceOf(rewardsContract.address);
-        console.log("Team:", teamS.toString(), "MainFundingPool", dfmS.toString(), "RewardsPool:", rwdS.toString());
+        console.log("Team:", teamS.toString(), "MainFundingPool:", dfmS.toString(), "RewardsPool:", rwdS.toString());
     });
 
     it("Test total supply and distribution of DDToken", async () => {
@@ -39,7 +39,7 @@ contract('DDToken', (accounts) => {
 
         let teamSupply = await ddToken.balanceOf(accounts[0]);
         assert.equal(expTeamSupply, teamSupply.toString(), "Intial supplied tokens aren't distributed to Team Account");
-    })
+    });
 
     it("Test mint daily for distribution to Donators", async () => {
         let expMinted = BN(500).mul(BN(10).pow(BN(6 + tokenDecimals))).mul(BN(95)).div(BN(100));
@@ -57,6 +57,18 @@ contract('DDToken', (accounts) => {
         let teamS = await ddToken.balanceOf(accounts[0]);
         let dfmS = await ddToken.balanceOf(dfmContract.address);
         let rwdS = await ddToken.balanceOf(rewardsContract.address);
-        console.log("Team:", teamS.toString(), "MainFundingPool", dfmS.toString(), "RewardsPool:", rwdS.toString());
-    })
+        console.log("Team:", teamS.toString(), "MainFundingPool:", dfmS.toString(), "RewardsPool:", rwdS.toString());
+    });
+
+    it ("Test pausable", async () => {
+        await ddToken.pause();
+        // await ddToken.transfer(accounts[1], 100000000);
+        await ddToken.unpause();
+    });
+
+    it ("Test transfer", async () => {
+        await ddToken.transfer(accounts[1], 100000000);
+        await ddToken.approve(accounts[1], 200000000);
+        await ddToken.transferFrom(accounts[0], accounts[2], 200000000, {from:accounts[1]});
+    });
 });

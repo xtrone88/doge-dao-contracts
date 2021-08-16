@@ -95,7 +95,7 @@ contract DFMContract is LGEContract {
         }
         quarters -= rewards[sender].length;
         require(quarters > 0, "DFM-Dfm: not reached withraw time");
-
+        
         uint256 uniShare = uniLiuqidityOf(sender);
         uint256 balShare = balLiquidityOf(sender);
         

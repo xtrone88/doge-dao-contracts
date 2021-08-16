@@ -115,9 +115,12 @@ contract LGEContract is BaseContract {
     }
 
     function _setupUniswapLiquidity() private {
+        uint256 ddAmount = IERC20(ddToken).balanceOf(address(this));
+        IERC20(ddToken).approve(address(uniswapRouter), ddAmount);
+        
         uniswapRouter.addLiquidityETH{value: uniLiquidityFund}(
             ddToken,
-            IERC20(ddToken).balanceOf(address(this)),
+            ddAmount,
             0,
             0,
             address(this),
@@ -128,9 +131,9 @@ contract LGEContract is BaseContract {
     }
 
     function _setupBalancerPool() private {
-        IWETH(WETH).deposit{value: balLiquidityFund}();
-
         uint256 share = balLiquidityFund / 4;
+        IWETH(WETH).deposit{value: share}();
+
         address[] memory path = new address[](2);
         uint256[] memory amounts = new uint256[](4);
         IERC20[] memory tokens = new IERC20[](4);

@@ -63,7 +63,7 @@ contract DonationContract is BaseContract {
         donations[today][sender] += amount;
         totalDonation[today] += amount;
         donators[today].push(sender);
-
+        
         return true;
     }
 
