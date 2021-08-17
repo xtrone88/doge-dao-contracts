@@ -20,13 +20,21 @@ contract DonationContract is BaseContract {
         today = _today();
     }
 
+    modifier acceptable(address token) {
+        require(
+            token == WETH || token == DAI || token == WBTC || token == USDC,
+            "no acceptable token"
+        );
+        _;
+    }
+
     function _today() private view returns (uint256) {
         return block.timestamp / 86400;
     }
 
     function distribute(uint256 minted) external whenStartup {
         require(ddToken == _msgSender(), "DFM-Don: caller is not DD token");
-        
+
         uint256 yesterday = today - 86400;
         if (distedDate == yesterday) {
             return;
@@ -35,16 +43,23 @@ contract DonationContract is BaseContract {
 
         if (totalDonation[yesterday] > 0) {
             for (uint256 i = 0; i < donators[yesterday].length; i++) {
-                uint256 share = minted * donations[yesterday][donators[yesterday][i]] / totalDonation[yesterday];
+                uint256 share = (minted *
+                    donations[yesterday][donators[yesterday][i]]) /
+                    totalDonation[yesterday];
                 distributions[donators[yesterday][i]] += share;
             }
         }
     }
 
-    function donate(address token, uint256 amount) public returns (bool) {
+    function donate(address token, uint256 amount)
+        public
+        acceptable(token)
+        returns (bool)
+    {
         require(amount > 0, "DFM-Don: can't donate with zero");
-
-        (bool success,) = dfm.delegatecall(abi.encodeWithSignature("donate(address,uint256)", token, amount));
+        (bool success, ) = dfm.delegatecall(
+            abi.encodeWithSignature("donate(address,uint256)", token, amount)
+        );
         require(success, "DFM-Don: transfer tokens failed");
 
         if (token != WETH) {
@@ -55,11 +70,11 @@ contract DonationContract is BaseContract {
         }
 
         address sender = _msgSender();
-        today = _today();        
+        today = _today();
         donations[today][sender] += amount;
         totalDonation[today] += amount;
         donators[today].push(sender);
-        
+
         return true;
     }
 
@@ -69,7 +84,10 @@ contract DonationContract is BaseContract {
 
     function claim(uint256 amount) public returns (bool) {
         address sender = _msgSender();
-        require(distributions[sender] > amount, "DFM-Don: claim exceeds the distribution");
+        require(
+            distributions[sender] > amount,
+            "DFM-Don: claim exceeds the distribution"
+        );
         distributions[sender] -= amount;
         IERC20(ddToken).transfer(sender, amount);
         return true;
