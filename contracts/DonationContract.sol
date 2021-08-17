@@ -23,6 +23,8 @@ contract DonationContract is BaseContract {
         return block.timestamp / 86400;
     }
 
+    receive() external payable {}
+
     function distribute(uint256 minted) external whenStartup {
         require(ddToken == _msgSender(), "DFM-Don: caller is not DD token");
         
@@ -32,12 +34,9 @@ contract DonationContract is BaseContract {
         }
         distedDate = yesterday;
 
-        uint256 total = totalDonation[yesterday];
-        if (total > 0) {
-            totalDonation[yesterday] = 0;
+        if (totalDonation[yesterday] > 0) {
             for (uint256 i = 0; i < donators[yesterday].length; i++) {
-                uint256 share = (minted / total) *
-                    donations[yesterday][donators[yesterday][i]];
+                uint256 share = minted * donations[yesterday][donators[yesterday][i]] / totalDonation[yesterday];
                 IERC20(ddToken).approve(donators[yesterday][i], share);
             }
         }
