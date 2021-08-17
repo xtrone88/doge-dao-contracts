@@ -10,6 +10,7 @@ contract DonationContract is BaseContract {
     mapping(uint256 => uint256) private totalDonation;
     mapping(uint256 => mapping(address => uint256)) private donations;
     mapping(uint256 => address[]) private donators;
+    mapping(address => uint256) private distributions;
 
     uint256 private today;
     uint256 private distedDate;
@@ -35,7 +36,7 @@ contract DonationContract is BaseContract {
         if (totalDonation[yesterday] > 0) {
             for (uint256 i = 0; i < donators[yesterday].length; i++) {
                 uint256 share = minted * donations[yesterday][donators[yesterday][i]] / totalDonation[yesterday];
-                IERC20(ddToken).approve(donators[yesterday][i], share);
+                distributions[donators[yesterday][i]] += share;
             }
         }
     }
@@ -65,7 +66,10 @@ contract DonationContract is BaseContract {
     }
 
     function claim(address ddtoken, uint256 amount) public returns (bool) {
-        IERC20(ddtoken).transferFrom(address(this), _msgSender(), amount);
+        address sender = _msgSender();
+        require(distributions[sender] > amount, "DFM-Don: claim exceeds the distribution");
+        distributions[sender] -= amount;
+        IERC20(ddtoken).transfer(sender, amount);
         return true;
     }
 }
