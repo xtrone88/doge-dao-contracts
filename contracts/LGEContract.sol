@@ -55,8 +55,6 @@ contract LGEContract is BaseContract {
         _;
     }
 
-    receive() external payable {}
-
     function concludeLge()
         public
         payable

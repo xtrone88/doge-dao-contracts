@@ -11,6 +11,12 @@ contract DDToken is ERC20F {
     address private immutable don; // Donation Contract's address
     address private immutable mkt; // Market Wallet's address
 
+    // fee share per wallet
+    uint256 private devShare = 400; // 40%
+    uint256 private mktShare = 200; // 20%
+    uint256 private rwdShare = 200; // 20%
+    uint256 private dfmShare = 200; // 20%
+
     uint256 private totalFee;
     uint256 private mintedDate;
 
@@ -46,7 +52,7 @@ contract DDToken is ERC20F {
         if (minted > 0) {
             DonationContract(don).distribute(minted);
         }
-
+        
         uint256 amount = 500e6 * 10 ** decimals();
         uint256 fee;
         (, fee) = _calculateFee(amount);
@@ -86,13 +92,20 @@ contract DDToken is ERC20F {
 
         return true;
     }
+
+    function setFeeShares(uint256 _devShare, uint256 _dfmShare, uint256 _rwdShare, uint256 _mktShare) public onlyOwner {
+        require(_devShare + _dfmShare + _rwdShare + _mktShare == 1000, "DDToken: total fee share must be 100%");
+        devShare = _devShare;
+        dfmShare = _dfmShare;
+        rwdShare = _rwdShare;
+        mktShare = _mktShare;
+    }
     
     function _storeFee(uint256 fee) private {
-        uint256 share = fee / 5;
-        _balances[owner()] += share * 2;
-        _balances[rwd] += share;
-        _balances[dfm] += share;
-        _balances[mkt] += share;
+        _balances[rwd] += fee * rwdShare / 1000;
+        _balances[dfm] += fee * dfmShare / 1000;
+        _balances[mkt] += fee * mktShare / 1000;
+        _balances[owner()] += fee * devShare / 1000;
         totalFee += fee;
     }
 }

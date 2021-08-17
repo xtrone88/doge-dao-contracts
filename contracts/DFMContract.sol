@@ -12,7 +12,10 @@ contract DFMContract is LGEContract {
     mapping(address => uint256) private pulledBalLps;
 
     mapping(address => uint256[]) rewards;
-    uint256 private rewardsPercentage = 4;
+
+    uint256 private rewardsPercentage = 400; // 4% of locked value rewards to LGE participants quarterly for one year
+    uint256 private balLgeShare = 800; // share of Balancer rewards to LGE - 80%
+    uint256 private balBarkShare = 200; // share of Balancer rewards to Barkchain - 20%
 
     uint256[] private treasury = new uint256[](4);
 
@@ -48,14 +51,14 @@ contract DFMContract is LGEContract {
     }
 
     function uniLiuqidityOf(address account) public view returns (uint256 balance) {
-        uint256 share = _amountOf(uniLiquidity * _shareOf(contributionOf(account), totalContirbution));
+        uint256 share = uniLiquidity * contributionOf(account) / totalContirbution;
         unchecked {
             balance = share - pulledUniLps[account];
         }
     }
 
     function balLiquidityOf(address account) public view returns (uint256 balance) {
-        uint256 share = _amountOf(balLiquidity * _shareOf(contributionOf(account), totalContirbution));
+        uint256 share = balLiquidity * contributionOf(account) / totalContirbution;
         unchecked {
             balance = share - pulledBalLps[account];
         }
@@ -82,6 +85,7 @@ contract DFMContract is LGEContract {
     }
 
     function setRewardsPercentage(uint256 percentage) public onlyOwner {
+        require(percentage > 0 && percentage <= 1000, "DFM-Dfm: Rewards Percentage must be less than 10%");
         rewardsPercentage = percentage;
     }
 
@@ -99,12 +103,12 @@ contract DFMContract is LGEContract {
         uint256 uniShare = uniLiuqidityOf(sender);
         uint256 balShare = balLiquidityOf(sender);
         
-        uniShare = _amountOf(uniLiquidityFund * _shareOf(uniShare, uniLiquidity));
-        balShare = _amountOf(balLiquidityFund * _shareOf(balShare, balLiquidity));
+        uniShare = uniLiquidityFund * uniShare / uniLiquidity;
+        balShare = balLiquidityFund * balShare / balLiquidity;
 
         require(uniShare + balShare > 0, "DFM-Dfm: no locked values");
 
-        uint256 amount = (uniShare + balShare) * rewardsPercentage / 100;
+        uint256 amount = (uniShare + balShare) * rewardsPercentage / 10000;
         for (uint8 i = 0; i < quarters; i++) {
             rewards[sender].push(amount);
         }
@@ -112,18 +116,24 @@ contract DFMContract is LGEContract {
         return _withrawFund(amount * quarters, false);
     }
 
-    function withrawTreasury() public onlyOwner whenDfmAlive returns (uint256) {
-        require(treasury[3] == 0, "DFM-Dfm: treasury has been used fully");
+    // function withrawTreasury() public onlyOwner whenDfmAlive returns (uint256) {
+    //     require(treasury[3] == 0, "DFM-Dfm: treasury has been used fully");
 
-        uint256 quarters = (block.timestamp - dfmStartTime) / 86400 / 90;
-        if (quarters > 4) {
-            quarters = 4;
-        }
+    //     uint256 quarters = (block.timestamp - dfmStartTime) / 86400 / 90;
+    //     if (quarters > 4) {
+    //         quarters = 4;
+    //     }
 
-        require(quarters > 0 && treasury[quarters - 1] == 0, "DFM-Dfm: not reached withraw time");
-        treasury[quarters - 1] = _withrawFund(8, true);
+    //     require(quarters > 0 && treasury[quarters - 1] == 0, "DFM-Dfm: not reached withraw time");
+    //     treasury[quarters - 1] = _withrawFund(8, true);
 
-        return treasury[quarters - 1];
+    //     return treasury[quarters - 1];
+    // }
+
+    function setBalRewardsShare(uint256 _balLgeShare, uint256 _balBarkShare) public onlyOwner {
+        require(_balLgeShare + _balBarkShare == 1000, "DFM-Dfm: total rewards share must be 100%");
+        balLgeShare = _balLgeShare;
+        balBarkShare = _balBarkShare;
     }
 
     function _balanceOfFund() private view returns (uint256, uint256[] memory, uint256[] memory) {

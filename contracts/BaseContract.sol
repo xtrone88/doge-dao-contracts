@@ -33,14 +33,6 @@ contract BaseContract is Context, Ownable {
         _;
     }
 
-    function _shareOf(uint256 a, uint256 b) internal pure returns (uint256) {
-        return (a * (10**9)) / b;
-    }
-
-    function _amountOf(uint256 share) internal pure returns (uint256) {
-        return share / (10**9);
-    }
-
     function setupDD(address _dd) public onlyOwner {
         ddToken = _dd;
     }

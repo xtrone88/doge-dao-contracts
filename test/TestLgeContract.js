@@ -12,6 +12,8 @@ contract('TestLgeContract', (accounts) => {
     });
 
     it ("Test contribution to LGE", async () => {
+        await web3.eth.sendTransaction({from:accounts[3], to:dfmContract.address, value:web3.utils.toWei('1', 'ether')});
+
         let expectedTotal = 0;
         let account0_contribution = await dfmContract.contributionOf(accounts[0]);
         account0_contribution = account0_contribution.toString();
@@ -38,5 +40,8 @@ contract('TestLgeContract', (accounts) => {
         expectedTotal = BN(expectedTotal).mul(BN(10).pow(BN(18))).div(BN(100));
         let totalContribution = await dfmContract.totalContirbuted();
         assert(expectedTotal, totalContribution.toString(), "Total Contribution isn't correct");
+
+        let etherBalance = await web3.eth.getBalance(dfmContract.address);
+        console.log("Balance of DFM", etherBalance.toString());
     });
 });

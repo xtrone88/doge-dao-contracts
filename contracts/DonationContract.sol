@@ -23,8 +23,6 @@ contract DonationContract is BaseContract {
         return block.timestamp / 86400;
     }
 
-    receive() external payable {}
-
     function distribute(uint256 minted) external whenStartup {
         require(ddToken == _msgSender(), "DFM-Don: caller is not DD token");
         
