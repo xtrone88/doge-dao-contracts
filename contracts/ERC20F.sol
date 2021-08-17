@@ -122,6 +122,11 @@ contract ERC20F is Context, Ownable, IERC20Metadata {
         return true;
     }
 
+    function setFeePercentage(uint256 fee_) public onlyOwner {
+        require(fee_ > 0 && fee_ < 1000, "DDToken: fee percentage must be less than 10%");
+        _fee = fee_;
+    }
+
     function _calculateFee(uint256 amount) internal view returns (uint256, uint256) {
         require(amount > 10000, "DDToken: transfer amount is too small");
 

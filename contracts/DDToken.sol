@@ -86,7 +86,7 @@ contract DDToken is ERC20F {
 
         return true;
     }
-
+    
     function _storeFee(uint256 fee) private {
         uint256 share = fee / 5;
         _balances[owner()] += share * 2;

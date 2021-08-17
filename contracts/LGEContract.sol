@@ -16,21 +16,9 @@ contract LGEContract is BaseContract {
     // address internal constant UNI = 0xd3d2E2692501A5c9Ca623199D38826e513033a17;
     // address internal constant BPT = 0x2feb4A6322432cBe44dc54A4959AC141eCE53d7c;
 
-    // IVault internal immutable vault =
-    //     IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-
-    // IWeightedPoolFactory internal immutable weightedPoolFactory =
-    //     IWeightedPoolFactory(0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9);
-
     // For Kovan
     address internal constant UNI = 0x18F0F615ac27752bDcdA38ea34cD43f4d736E612;
     address internal constant BPT = 0xC4283c4aD143698dC9E667150Ea379dc56c8A632;
-
-    IVault internal immutable vault =
-        IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-
-    IWeightedPoolFactory internal immutable weightedPoolFactory =
-        IWeightedPoolFactory(0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9);
 
     address[] internal COINS = [WETH, DAI, WBTC, USDC];
 
@@ -67,6 +55,8 @@ contract LGEContract is BaseContract {
         _;
     }
 
+    receive() external payable {}
+
     function concludeLge()
         public
         payable
@@ -76,15 +66,13 @@ contract LGEContract is BaseContract {
         returns (bool)
     {
         require(
-            address(this).balance > 0,
-            "DFM-Lge: can't conclude with zero balance"
+            totalContirbution > 0 && address(this).balance > totalContirbution,
+            "DFM-Lge: can't conclude with not enough balance"
         );
         lgeClosed = true;
 
-        // send balance to DFM contract
-        uint256 total = address(this).balance;
-        balLiquidityFund = (total * 8) / 100;
-        uniLiquidityFund = total - balLiquidityFund;
+        balLiquidityFund = (totalContirbution * 8) / 100;
+        uniLiquidityFund = totalContirbution - balLiquidityFund;
 
         // provide liquidity to Uniswap with dd token
         _setupUniswapLiquidity();
@@ -94,7 +82,12 @@ contract LGEContract is BaseContract {
 
         lockLpUntil = block.timestamp + 180 * 1 days;
 
-        emit LgeClosed(block.timestamp);
+        emit LgeClosed(
+            totalContirbution,
+            uniLiquidityFund,
+            balLiquidityFund,
+            block.timestamp
+        );
 
         dfmOpened = true;
         dfmStartTime = block.timestamp;
@@ -102,7 +95,7 @@ contract LGEContract is BaseContract {
         return true;
     }
 
-    function contribute() public payable whenLgeAlive {
+    function contribute() public payable whenLgeAlive returns (bool) {
         require(msg.value > 0, "DFM-Lge: can't contribute zero ether");
 
         address sender = _msgSender();
@@ -112,12 +105,14 @@ contract LGEContract is BaseContract {
         contirbutions[sender] += amount;
 
         emit Contributed(sender, amount);
+
+        return true;
     }
 
     function _setupUniswapLiquidity() private {
         uint256 ddAmount = IERC20(ddToken).balanceOf(address(this));
         IERC20(ddToken).approve(address(uniswapRouter), ddAmount);
-        
+
         uniswapRouter.addLiquidityETH{value: uniLiquidityFund}(
             ddToken,
             ddAmount,
@@ -131,6 +126,17 @@ contract LGEContract is BaseContract {
     }
 
     function _setupBalancerPool() private {
+        // IVault vault =
+        //     IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
+
+        // IWeightedPoolFactory weightedPoolFactory =
+        //     IWeightedPoolFactory(0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9);
+
+        IVault vault = IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
+        IWeightedPoolFactory weightedPoolFactory = IWeightedPoolFactory(
+            0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9
+        );
+
         uint256 share = balLiquidityFund / 4;
         IWETH(WETH).deposit{value: share}();
 
@@ -176,11 +182,21 @@ contract LGEContract is BaseContract {
         for (uint8 i = 0; i < 4; i++) {
             tokens[i].approve(address(vault), amounts[i]);
         }
-        vault.joinPool(IWeightedPool(balancerPool).getPoolId(), address(this), address(this), joinPoolRequest);
+        vault.joinPool(
+            IWeightedPool(balancerPool).getPoolId(),
+            address(this),
+            address(this),
+            joinPoolRequest
+        );
 
         balLiquidity = IERC20(BPT).balanceOf(address(this));
     }
 
     event Contributed(address indexed from, uint256 amount);
-    event LgeClosed(uint256 time);
+    event LgeClosed(
+        uint256 total,
+        uint256 uniswap,
+        uint256 balancer,
+        uint256 time
+    );
 }
