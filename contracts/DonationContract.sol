@@ -65,11 +65,15 @@ contract DonationContract is BaseContract {
         return true;
     }
 
-    function claim(address ddtoken, uint256 amount) public returns (bool) {
+    function distributionOf() public view returns (uint256) {
+        return distributions[_msgSender()];
+    }
+
+    function claim(uint256 amount) public returns (bool) {
         address sender = _msgSender();
         require(distributions[sender] > amount, "DFM-Don: claim exceeds the distribution");
         distributions[sender] -= amount;
-        IERC20(ddtoken).transfer(sender, amount);
+        IERC20(ddToken).transfer(sender, amount);
         return true;
     }
 }
