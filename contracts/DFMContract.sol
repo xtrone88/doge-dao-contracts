@@ -6,8 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./LGEContract.sol";
 
 contract DFMContract is LGEContract {
-    mapping(address => uint256) donations;
-
     mapping(address => uint256) private pulledUniLps;
     mapping(address => uint256) private pulledBalLps;
 
@@ -17,7 +15,7 @@ contract DFMContract is LGEContract {
     uint256 private balLgeShare = 800; // share of Balancer rewards to LGE - 80%
     uint256 private balBarkShare = 200; // share of Balancer rewards to Barkchain - 20%
 
-    uint256[] private treasury = new uint256[](4);
+    // uint256[] private treasury = new uint256[](4);
 
     modifier whenDfmAlive() {
         require(dfmOpened, "DFM-Dfm: has not yet opened");
@@ -39,10 +37,7 @@ contract DFMContract is LGEContract {
         returns (bool)
     {
         require(amount > 0, "DFM-Dfm: can't donate with zero");
-
         IERC20(token).transferFrom(_msgSender(), address(this), amount);
-        donations[token] += amount;
-
         return true;
     }
 

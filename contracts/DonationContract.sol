@@ -44,12 +44,11 @@ contract DonationContract is BaseContract {
     function donate(address token, uint256 amount) public returns (bool) {
         require(amount > 0, "DFM-Don: can't donate with zero");
 
+        (bool success,) = dfm.delegatecall(abi.encodeWithSignature("donate(address,uint256)", token, amount));
+        require(success, "DFM-Don: transfer tokens failed");
+
         address sender = _msgSender();
         today = _today();
-
-        IERC20(token).transferFrom(sender, address(this), amount);
-        IERC20(token).approve(dfm, amount);
-        DFMContract(dfm).donate(token, amount);
 
         if (token != WETH) {
             address[] memory path = new address[](2);
