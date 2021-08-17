@@ -47,16 +47,15 @@ contract DonationContract is BaseContract {
         (bool success,) = dfm.delegatecall(abi.encodeWithSignature("donate(address,uint256)", token, amount));
         require(success, "DFM-Don: transfer tokens failed");
 
-        address sender = _msgSender();
-        today = _today();
-
         if (token != WETH) {
             address[] memory path = new address[](2);
             path[0] = token;
             path[1] = WETH;
             amount = uniswapRouter.getAmountsOut(amount, path)[1];
         }
-        
+
+        address sender = _msgSender();
+        today = _today();        
         donations[today][sender] += amount;
         totalDonation[today] += amount;
         donators[today].push(sender);

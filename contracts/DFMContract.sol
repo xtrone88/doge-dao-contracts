@@ -34,11 +34,9 @@ contract DFMContract is LGEContract {
         external
         whenDfmAlive
         acceptable(token)
-        returns (bool)
     {
         require(amount > 0, "DFM-Dfm: can't donate with zero");
         IERC20(token).transferFrom(_msgSender(), address(this), amount);
-        return true;
     }
 
     function setBalancerSwapFee(uint256 swapFeePercentage) public onlyOwner whenDfmAlive {
