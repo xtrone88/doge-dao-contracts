@@ -15,8 +15,12 @@ contract DFMContract is LGEContract {
 
     // uint256[] private treasury = new uint256[](4);
 
+    constructor(address _rwd) {
+        rwd = _rwd;
+    }
+
     modifier whenDfmAlive() {
-        require(dfmOpened, "DFM-Dfm: has not yet opened");
+        require(dfmStartTime > 0, "DFM-Dfm: has not yet opened");
         _;
     }
 

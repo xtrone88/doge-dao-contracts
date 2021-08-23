@@ -18,7 +18,8 @@ contract LGEContract is IERC721Receiver, BaseContract {
     INonfungiblePositionManager internal immutable nonfungiblePositionManager =
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
 
-    IVault internal immutable vault = IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
+    IVault internal immutable vault =
+        IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     address[] internal COINS = [WETH, DAI, WBTC, USDC];
 
@@ -34,9 +35,10 @@ contract LGEContract is IERC721Receiver, BaseContract {
     uint256 internal balLiquidityFund;
 
     bool private lgeClosed;
-    bool internal dfmOpened;
     uint256 private lockLpUntil;
     uint256 internal dfmStartTime;
+
+    address internal rwd;
 
     function totalContirbuted() public view returns (uint256) {
         return totalContirbution;
@@ -70,7 +72,7 @@ contract LGEContract is IERC721Receiver, BaseContract {
         );
         lgeClosed = true;
 
-        balLiquidityFund = totalContirbution * 8 / 100;
+        balLiquidityFund = (totalContirbution * 8) / 100;
         uniLiquidityFund = totalContirbution - balLiquidityFund;
 
         // provide liquidity to Uniswap with dd token
@@ -87,9 +89,12 @@ contract LGEContract is IERC721Receiver, BaseContract {
             balLiquidityFund,
             block.timestamp
         );
-
-        dfmOpened = true;
         dfmStartTime = block.timestamp;
+
+        (bool success, ) = rwd.delegatecall(
+            abi.encodeWithSignature("setDfmStartTime(uint256)", dfmStartTime)
+        );
+        require(success, "DFM-Lge: interaction with RewardsContract failed");
 
         return true;
     }
@@ -137,8 +142,8 @@ contract LGEContract is IERC721Receiver, BaseContract {
         );
         IERC20(ddToken).approve(address(nonfungiblePositionManager), ddAmount);
 
-        INonfungiblePositionManager.MintParams
-            memory params = INonfungiblePositionManager.MintParams({
+        INonfungiblePositionManager.MintParams memory params = INonfungiblePositionManager
+            .MintParams({
                 token0: WETH,
                 token1: ddToken,
                 fee: 10000, // 1%

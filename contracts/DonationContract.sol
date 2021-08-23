@@ -71,9 +71,11 @@ contract DonationContract is BaseContract {
 
         address sender = _msgSender();
         today = _today();
+        if (donations[today][sender] == 0) {
+            donators[today].push(sender);
+        }
         donations[today][sender] += amount;
         totalDonation[today] += amount;
-        donators[today].push(sender);
 
         return true;
     }

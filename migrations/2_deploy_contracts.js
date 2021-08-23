@@ -5,7 +5,12 @@ const DDToken = artifacts.require("DDToken");
 
 module.exports = function (deployer, network, accounts) {
     var dfm, don, rwd;
-    deployer.deploy(DFMContract)
+    deployer.deploy(RewardsContract)
+    .then(() => RewardsContract.deployed())
+    .then((instance) => {
+        rwd = instance;
+        return deployer.deploy(DFMContract, RewardsContract.address);
+    })
     .then(() => DFMContract.deployed())
     .then((instance) => {
         dfm = instance;
@@ -14,11 +19,6 @@ module.exports = function (deployer, network, accounts) {
     .then(() => DonationContract.deployed())
     .then((instance) => {
         don = instance;
-        return deployer.deploy(RewardsContract);
-    })
-    .then(() => RewardsContract.deployed())
-    .then((instance) => {
-        rwd = instance;
         return deployer.deploy(DDToken, DFMContract.address, DFMContract.address, RewardsContract.address, DonationContract.address, accounts[0]);
     })
     .then(() => {
