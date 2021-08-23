@@ -1,7 +1,10 @@
 //"SPDX-License-Identifier: MIT"
 pragma solidity ^0.8.4;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "./interfaces/IWeightedPoolFactory.sol";
 import "./interfaces/IWeightedPool.sol";
@@ -11,30 +14,28 @@ import "./interfaces/IWETH.sol";
 import "./BaseContract.sol";
 import "./DFMContract.sol";
 
-contract LGEContract is BaseContract {
-    // For MainNet
-    // address internal constant UNI = 0xd3d2E2692501A5c9Ca623199D38826e513033a17;
-    // address internal constant BPT = 0x2feb4A6322432cBe44dc54A4959AC141eCE53d7c;
+contract LGEContract is IERC721Receiver, BaseContract {
+    INonfungiblePositionManager internal immutable nonfungiblePositionManager =
+        INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
 
-    // For Kovan
-    address internal constant UNI = 0x18F0F615ac27752bDcdA38ea34cD43f4d736E612;
-    address internal constant BPT = 0xC4283c4aD143698dC9E667150Ea379dc56c8A632;
+    IVault internal immutable vault = IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     address[] internal COINS = [WETH, DAI, WBTC, USDC];
-
-    bool private lgeClosed;
-    bool internal dfmOpened;
 
     uint256 internal totalContirbution;
     mapping(address => uint256) internal contirbutions;
 
-    uint256 private lockLpUntil;
-
-    uint256 internal uniLiquidityFund;
+    uint256 internal univ3LpTokenId;
     uint256 internal uniLiquidity;
-    uint256 internal balLiquidityFund;
-    uint256 internal balLiquidity;
+    uint256 internal uniLiquidityFund;
+
     address internal balancerPool;
+    uint256[] internal balLiquidity = new uint256[](4);
+    uint256 internal balLiquidityFund;
+
+    bool private lgeClosed;
+    bool internal dfmOpened;
+    uint256 private lockLpUntil;
     uint256 internal dfmStartTime;
 
     function totalContirbuted() public view returns (uint256) {
@@ -69,7 +70,7 @@ contract LGEContract is BaseContract {
         );
         lgeClosed = true;
 
-        balLiquidityFund = (totalContirbution * 8) / 100;
+        balLiquidityFund = totalContirbution * 8 / 100;
         uniLiquidityFund = totalContirbution - balLiquidityFund;
 
         // provide liquidity to Uniswap with dd token
@@ -107,39 +108,60 @@ contract LGEContract is BaseContract {
         return true;
     }
 
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure override returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
     function _setupUniswapLiquidity() private {
         uint256 ddAmount = IERC20(ddToken).balanceOf(address(this));
-        IERC20(ddToken).approve(address(uniswapRouter), ddAmount);
+        IWETH(WETH).deposit{value: uniLiquidityFund}();
 
-        uniswapRouter.addLiquidityETH{value: uniLiquidityFund}(
-            ddToken,
-            ddAmount,
-            0,
-            0,
-            address(this),
-            block.timestamp + 15
+        // IERC20(ddToken).approve(address(uniswapRouter), ddAmount);
+        // uniswapRouter.addLiquidityETH{value: uniLiquidityFund}(
+        //     ddToken,
+        //     ddAmount,
+        //     0,
+        //     0,
+        //     address(this),
+        //     block.timestamp + 15
+        // );
+
+        IERC20(WETH).approve(
+            address(nonfungiblePositionManager),
+            uniLiquidityFund
         );
+        IERC20(ddToken).approve(address(nonfungiblePositionManager), ddAmount);
 
-        uniLiquidity = IERC20(UNI).balanceOf(address(this));
+        INonfungiblePositionManager.MintParams
+            memory params = INonfungiblePositionManager.MintParams({
+                token0: WETH,
+                token1: ddToken,
+                fee: 10000, // 1%
+                tickLower: -887272,
+                tickUpper: 887272,
+                amount0Desired: uniLiquidityFund,
+                amount1Desired: ddAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this),
+                deadline: block.timestamp + 15
+            });
+
+        (univ3LpTokenId, uniLiquidity, , ) = nonfungiblePositionManager.mint(
+            params
+        );
     }
 
     function _setupBalancerPool() private {
-        // IVault vault =
-        //     IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-
-        // IWeightedPoolFactory weightedPoolFactory =
-        //     IWeightedPoolFactory(0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9);
-
-        IVault vault = IVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-        IWeightedPoolFactory weightedPoolFactory = IWeightedPoolFactory(
-            0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9
-        );
-
         uint256 share = balLiquidityFund / 4;
         IWETH(WETH).deposit{value: share}();
 
         address[] memory path = new address[](2);
-        uint256[] memory amounts = new uint256[](4);
         IERC20[] memory tokens = new IERC20[](4);
         uint256[] memory weights = new uint256[](4);
         IAsset[] memory assets = new IAsset[](4);
@@ -147,7 +169,7 @@ contract LGEContract is BaseContract {
         path[0] = WETH;
         for (uint8 i = 0; i < 4; i++) {
             path[1] = COINS[i];
-            amounts[i] = COINS[i] == WETH
+            balLiquidity[i] = COINS[i] == WETH
                 ? share
                 : uniswapRouter.swapExactETHForTokens{value: share}(
                     0,
@@ -161,6 +183,9 @@ contract LGEContract is BaseContract {
             assets[i] = IAsset(COINS[i]);
         }
 
+        IWeightedPoolFactory weightedPoolFactory = IWeightedPoolFactory(
+            0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9
+        );
         balancerPool = weightedPoolFactory.create(
             "DogeFundMe",
             "DFM",
@@ -170,24 +195,23 @@ contract LGEContract is BaseContract {
             address(this)
         );
 
-        bytes memory userData = abi.encode(uint256(0), amounts);
+        bytes memory userData = abi.encode(uint256(0), balLiquidity);
         IVault.JoinPoolRequest memory joinPoolRequest = IVault.JoinPoolRequest({
             assets: assets,
-            maxAmountsIn: amounts,
+            maxAmountsIn: balLiquidity,
             userData: userData,
             fromInternalBalance: false
         });
         for (uint8 i = 0; i < 4; i++) {
-            tokens[i].approve(address(vault), amounts[i]);
+            tokens[i].approve(address(vault), balLiquidity[i]);
         }
+
         vault.joinPool(
             IWeightedPool(balancerPool).getPoolId(),
             address(this),
             address(this),
             joinPoolRequest
         );
-
-        balLiquidity = IERC20(BPT).balanceOf(address(this));
     }
 
     event Contributed(address indexed from, uint256 amount);

@@ -6,9 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./LGEContract.sol";
 
 contract DFMContract is LGEContract {
-    mapping(address => uint256) private pulledUniLps;
-    mapping(address => uint256) private pulledBalLps;
-
+    mapping(address => uint256) private pulledLps;
     mapping(address => uint256[]) rewards;
 
     uint256 private rewardsPercentage = 400; // 4% of locked value rewards to LGE participants quarterly for one year
@@ -34,64 +32,6 @@ contract DFMContract is LGEContract {
         IWeightedPool(balancerPool).setSwapFeePercentage(swapFeePercentage);
     }
 
-    function uniLiuqidityOf(address account)
-        public
-        view
-        returns (uint256 balance)
-    {
-        uint256 share = (uniLiquidity * contributionOf(account)) /
-            totalContirbution;
-        unchecked {
-            balance = share - pulledUniLps[account];
-        }
-    }
-
-    function balLiquidityOf(address account)
-        public
-        view
-        returns (uint256 balance)
-    {
-        uint256 share = (balLiquidity * contributionOf(account)) /
-            totalContirbution;
-        unchecked {
-            balance = share - pulledBalLps[account];
-        }
-    }
-
-    function pullUniLiquidity(uint256 amount)
-        public
-        whenLpUnlocked
-        returns (bool)
-    {
-        address sender = _msgSender();
-        require(
-            uniLiuqidityOf(sender) > amount,
-            "DFM-Dfm: exceeded uniswap liquidity you contributed"
-        );
-
-        pulledUniLps[sender] += amount;
-        IERC20(UNI).transfer(sender, amount);
-
-        return true;
-    }
-
-    function pullBalLiquidity(uint256 amount)
-        public
-        whenLpUnlocked
-        returns (bool)
-    {
-        address sender = _msgSender();
-        require(
-            balLiquidityOf(sender) > amount,
-            "DFM-Dfm: exceeded balancer liquidity you contributed"
-        );
-
-        pulledBalLps[sender] += amount;
-        IERC20(BPT).transfer(sender, amount);
-
-        return true;
-    }
-
     function setRewardsPercentage(uint256 percentage) public onlyOwner {
         require(
             percentage > 0 && percentage <= 1000,
@@ -99,11 +39,71 @@ contract DFMContract is LGEContract {
         );
         rewardsPercentage = percentage;
     }
-
-    function withrawRewards() public whenDfmAlive returns (uint256) {
+    
+    function setBalRewardsShare(uint256 _balLgeShare, uint256 _balBarkShare)
+        public
+        onlyOwner
+    {
+        require(
+            _balLgeShare + _balBarkShare == 1000,
+            "DFM-Dfm: total rewards share must be 100%"
+        );
+        balLgeShare = _balLgeShare;
+        balBarkShare = _balBarkShare;
+    }
+    
+    function withrawLiquidity() public whenLpUnlocked returns (bool) {
         address sender = _msgSender();
-        require(rewards[sender].length < 4, "DFM-Dfm: no rewards");
+        uint256 tvl = contributionOf(sender) - pulledLps[sender];
+        require(tvl > 0, "DFM-Dfm: no locked values");
 
+        pulledLps[sender] += tvl;
+        uint256 pullAmount = uniLiquidity * tvl / totalContirbution;
+
+        INonfungiblePositionManager.DecreaseLiquidityParams memory params =
+            INonfungiblePositionManager.DecreaseLiquidityParams({
+                tokenId: univ3LpTokenId,
+                liquidity: uint128(pullAmount),
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp + 15
+            });
+
+        (uint256 amount0, uint256 amount1) = nonfungiblePositionManager.decreaseLiquidity(params);
+        IERC20(WETH).transfer(sender, amount0);
+        IERC20(ddToken).transfer(sender, amount1);
+
+        uint256[] memory pullAmounts = new uint256[](4);
+        IAsset[] memory assets = new IAsset[](4);
+        for (uint8 i = 0; i < 4; i++) {
+            pullAmounts[i] = balLiquidity[i] * tvl / totalContirbution;
+            assets[i] = IAsset(COINS[i]);
+        }
+
+        bytes memory userData = abi.encode(uint256(0), pullAmounts);
+        IVault.ExitPoolRequest memory exitPoolRequest = IVault.ExitPoolRequest({
+            assets: assets,
+            minAmountsOut: pullAmounts,
+            userData: userData,
+            toInternalBalance: false
+        });
+
+        vault.exitPool(
+            IWeightedPool(balancerPool).getPoolId(),
+            address(this),
+            payable(sender),
+            exitPoolRequest
+        );
+
+        return true;
+    }
+
+    function withrawRewards() public whenDfmAlive returns (bool) {
+        address sender = _msgSender();
+        uint256 tvl = contributionOf(sender) - pulledLps[sender];
+        require(tvl > 0, "DFM-Dfm: no locked values");
+
+        require(rewards[sender].length < 4, "DFM-Dfm: no rewards");
         uint256 quarters = (block.timestamp - dfmStartTime) / 86400 / 90;
         if (quarters > 4) {
             quarters = 4;
@@ -111,20 +111,13 @@ contract DFMContract is LGEContract {
         quarters -= rewards[sender].length;
         require(quarters > 0, "DFM-Dfm: not reached withraw time");
 
-        uint256 uniShare = uniLiuqidityOf(sender);
-        uint256 balShare = balLiquidityOf(sender);
-
-        uniShare = (uniLiquidityFund * uniShare) / uniLiquidity;
-        balShare = (balLiquidityFund * balShare) / balLiquidity;
-
-        require(uniShare + balShare > 0, "DFM-Dfm: no locked values");
-
-        uint256 amount = ((uniShare + balShare) * rewardsPercentage) / 10000;
+        uint256 amount = (tvl * rewardsPercentage) / 10000;
         for (uint8 i = 0; i < quarters; i++) {
             rewards[sender].push(amount);
         }
+        _withrawFund(amount * quarters, false);
 
-        return _withrawFund(amount * quarters, false);
+        return true;
     }
 
     // function withrawTreasury() public onlyOwner whenDfmAlive returns (uint256) {
@@ -140,18 +133,6 @@ contract DFMContract is LGEContract {
 
     //     return treasury[quarters - 1];
     // }
-
-    function setBalRewardsShare(uint256 _balLgeShare, uint256 _balBarkShare)
-        public
-        onlyOwner
-    {
-        require(
-            _balLgeShare + _balBarkShare == 1000,
-            "DFM-Dfm: total rewards share must be 100%"
-        );
-        balLgeShare = _balLgeShare;
-        balBarkShare = _balBarkShare;
-    }
 
     function _balanceOfFund()
         private
@@ -187,7 +168,7 @@ contract DFMContract is LGEContract {
     {
         (uint256 total, , uint256[] memory converted) = _balanceOfFund();
         if (percentage) {
-            amount = (total * amount) / 100;
+            amount = total * amount / 100;
         }
         require(total > amount, "DFM-Dfm: withraw exceeds the balance");
 

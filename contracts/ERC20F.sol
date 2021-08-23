@@ -127,7 +127,7 @@ contract ERC20F is Context, Ownable, IERC20Metadata {
         _fee = fee_;
     }
 
-    function _calculateFee(uint256 amount) internal view returns (uint256, uint256) {
+    function calculateFee(uint256 amount) public view returns (uint256, uint256) {
         require(amount > 10000, "DDToken: transfer amount is too small");
 
         uint256 receiveal = amount;
@@ -160,7 +160,7 @@ contract ERC20F is Context, Ownable, IERC20Metadata {
         uint256 receiveal;
         uint256 fee;
 
-        (receiveal, fee) = _calculateFee(amount);
+        (receiveal, fee) = calculateFee(amount);
 
         _balances[recipient] += receiveal;
 

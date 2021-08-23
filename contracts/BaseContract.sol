@@ -14,9 +14,6 @@ contract BaseContract is Context, Ownable {
     // address internal constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     // address internal constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
-    // IUniswapV2Router internal immutable uniswapRouter =
-    //     IUniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-
     // For Kovan
     address internal constant WETH = 0x02822e968856186a20fEc2C824D4B174D0b70502;
     address internal constant DAI = 0x04DF6e4121c27713ED22341E7c7Df330F56f289B;

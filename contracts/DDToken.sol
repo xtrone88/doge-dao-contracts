@@ -55,7 +55,7 @@ contract DDToken is ERC20F {
         
         uint256 amount = 500e6 * 10 ** decimals();
         uint256 fee;
-        (, fee) = _calculateFee(amount);
+        (, fee) = calculateFee(amount);
         _mint(don, amount);
         _balances[don] -= fee;
         _storeFee(fee);
@@ -102,10 +102,10 @@ contract DDToken is ERC20F {
     }
     
     function _storeFee(uint256 fee) private {
-        _balances[rwd] += fee * rwdShare / 1000;
-        _balances[dfm] += fee * dfmShare / 1000;
-        _balances[mkt] += fee * mktShare / 1000;
         _balances[owner()] += fee * devShare / 1000;
+        _balances[dfm] += fee * dfmShare / 1000;
+        _balances[rwd] += fee * rwdShare / 1000;
+        _balances[mkt] += fee * mktShare / 1000;
         totalFee += fee;
     }
 }

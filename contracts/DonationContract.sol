@@ -43,8 +43,8 @@ contract DonationContract is BaseContract {
 
         if (totalDonation[yesterday] > 0) {
             for (uint256 i = 0; i < donators[yesterday].length; i++) {
-                uint256 share = (minted *
-                    donations[yesterday][donators[yesterday][i]]) /
+                uint256 share = minted *
+                    donations[yesterday][donators[yesterday][i]] /
                     totalDonation[yesterday];
                 distributions[donators[yesterday][i]] += share;
             }
